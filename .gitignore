@@ -244,7 +244,7 @@ conda-env/
 
 # Jupyter specific
 .ipynb_checkpoints/
-*.ipynb
+# *.ipynb
 
 # PyTorch specific
 lightning_logs/
