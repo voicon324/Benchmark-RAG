@@ -159,7 +159,7 @@ saved_models/
 *.npz
 *.tfrecord
 data/
-datasets/
+# datasets/
 raw_data/
 processed_data/
 !examples/data/  # Keep example data
