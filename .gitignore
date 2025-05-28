@@ -142,7 +142,7 @@ dmypy.json
 *.onnx
 *.tflite
 *.safetensors
-models/
+# models/
 checkpoints/
 weights/
 saved_models/
