@@ -1,0 +1,171 @@
+# FAISS Configuration Examples for NewAIBench Dense Retrieval
+# This file demonstrates different FAISS index configurations for various scenarios
+
+# Small corpus (<10K documents) - Exact search
+small_corpus_exact:
+  name: "small_corpus_exact_search"
+  description: "Exact search for small corpora using IndexFlatIP"
+  dataset:
+    loader: "TextDatasetLoader"
+    path: "path/to/small/dataset"
+  
+  model:
+    name: "dense_sbert_exact"
+    type: "dense"
+    model_name_or_path: "all-MiniLM-L6-v2"
+    parameters:
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "Flat"  # IndexFlatIP for exact cosine similarity
+      normalize_embeddings: true
+      max_seq_length: 256
+      batch_size: 32
+
+# Medium corpus (10K-100K documents) - IVF with balanced performance
+medium_corpus_ivf:
+  name: "medium_corpus_ivf_search"
+  description: "IVF index for medium-sized corpora with balanced speed/accuracy"
+  dataset:
+    loader: "TextDatasetLoader"
+    path: "path/to/medium/dataset"
+  
+  model:
+    name: "dense_sbert_ivf"
+    type: "dense"
+    model_name_or_path: "all-mpnet-base-v2"
+    parameters:
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF1024,Flat"  # 1024 clusters with flat quantization
+      faiss_nprobe: 50  # Search 50 clusters for good recall
+      normalize_embeddings: true
+      max_seq_length: 384
+      batch_size: 64
+
+# Large corpus (>100K documents) - IVF with Product Quantization for memory efficiency
+large_corpus_ivfpq:
+  name: "large_corpus_ivfpq_search"
+  description: "IVF+PQ index for large corpora with memory optimization"
+  dataset:
+    loader: "TextDatasetLoader"
+    path: "path/to/large/dataset"
+  
+  model:
+    name: "dense_sbert_ivfpq"
+    type: "dense"
+    model_name_or_path: "e5-large-v2"
+    parameters:
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF4096,PQ32"  # 4096 clusters with 32-byte PQ
+      faiss_nprobe: 100  # Higher nprobe for better recall with PQ
+      normalize_embeddings: true
+      max_seq_length: 512
+      batch_size: 32
+
+# High-performance HNSW for fast approximate search
+hnsw_fast_search:
+  name: "hnsw_fast_search"
+  description: "HNSW index for fast approximate search across various corpus sizes"
+  dataset:
+    loader: "TextDatasetLoader"
+    path: "path/to/dataset"
+  
+  model:
+    name: "dense_sbert_hnsw"
+    type: "dense"
+    model_name_or_path: "all-mpnet-base-v2"
+    parameters:
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "HNSW32,Flat"  # HNSW with M=32 connections
+      normalize_embeddings: true
+      max_seq_length: 384
+      batch_size: 64
+
+# GPU-accelerated configuration for large-scale deployment
+gpu_accelerated_search:
+  name: "gpu_accelerated_search"
+  description: "GPU-accelerated FAISS for high-throughput scenarios"
+  dataset:
+    loader: "TextDatasetLoader"
+    path: "path/to/large/dataset"
+  
+  model:
+    name: "dense_sbert_gpu"
+    type: "dense"
+    model_name_or_path: "e5-large-v2"
+    parameters:
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF2048,Flat"
+      faiss_use_gpu: true  # Enable GPU acceleration
+      faiss_nprobe: 64
+      normalize_embeddings: true
+      max_seq_length: 512
+      batch_size: 128  # Larger batch size for GPU
+
+# Memory-optimized configuration for resource-constrained environments
+memory_optimized:
+  name: "memory_optimized_search"
+  description: "Memory-efficient configuration using aggressive quantization"
+  dataset:
+    loader: "TextDatasetLoader"
+    path: "path/to/dataset"
+  
+  model:
+    name: "dense_sbert_memory_opt"
+    type: "dense"
+    model_name_or_path: "all-MiniLM-L6-v2"
+    parameters:
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF1024,PQ16"  # 16-byte PQ for aggressive compression
+      faiss_nprobe: 32
+      normalize_embeddings: true
+      max_seq_length: 256
+      batch_size: 16
+
+# Alternative: HNSWLIB backend for comparison
+hnswlib_comparison:
+  name: "hnswlib_comparison"
+  description: "HNSWLIB backend for performance comparison"
+  dataset:
+    loader: "TextDatasetLoader"
+    path: "path/to/dataset"
+  
+  model:
+    name: "dense_sbert_hnswlib"
+    type: "dense"
+    model_name_or_path: "all-mpnet-base-v2"
+    parameters:
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "hnswlib"  # Using HNSWLIB instead of FAISS
+      m_parameter_hnsw: 16    # Number of connections
+      ef_construction_hnsw: 200  # Construction parameter
+      ef_search_hnsw: 50      # Search parameter
+      normalize_embeddings: true
+      max_seq_length: 384
+      batch_size: 64
+
+# Evaluation configuration
+evaluation:
+  metrics: ["recall_at_k", "precision_at_k", "map", "ndcg"]
+  k_values: [1, 5, 10, 20, 50, 100]
+  output_format: "json"
+
+# Performance notes:
+# 1. IndexFlatIP: Exact search, best quality, O(n) query time
+# 2. IVFFlat: Good for 10K-1M docs, O(sqrt(n)) query time
+# 3. IVFPQ: Memory efficient for >1M docs, some quality loss
+# 4. HNSW: Fast approximate search, good across all scales
+# 5. GPU acceleration requires faiss-gpu package
+# 6. Higher nprobe = better recall but slower search
+# 7. PQ compression reduces memory but may impact quality

@@ -1,0 +1,51 @@
+# BKAI Legal Data Retrieval Experiment
+# This configuration tests retrieval models on Vietnamese legal data
+
+description: "BKAI Legal Data Retrieval Benchmark"
+
+models:
+  - name: "bm25_baseline"
+    type: "sparse"
+    model_name_or_path: ""  # BM25 doesn't need a pre-trained model path
+    parameters:
+      k1: 1.2
+      b: 0.75
+    device: "cpu"  # BM25 always uses CPU
+
+  - name: "sentence_bert_multilingual"
+    type: "dense" 
+    model_name_or_path: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+    batch_size: 256
+    max_seq_length: 512
+
+datasets:
+  - name: "bkai_legal_data"
+    type: "text"
+    data_dir: "/home/hkduy/NewAI/new_bench/BKAI_law_data/newaibench_formatted_data/legal_data"
+    max_samples: 1000  # Limit dataset to 1000 samples for faster testing
+    config_overrides:
+      cache_enabled: true
+      validation_enabled: true
+      queries_file: "train_queries.jsonl"
+      qrels_file: "train_qrels.txt"
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision"]
+  k_values: [1, 3, 5, 10, 20, 100]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 100
+  save_run_file: true
+  run_file_format: "trec"
+
+output:
+  output_dir: "./results/bkai_legal_experiments"
+  experiment_name: "bkai_legal_retrieval"
+  save_models: false
+  save_intermediate: true
+  # log_level: "DEBUG"  # Changed from INFO to DEBUG
+  overwrite: true

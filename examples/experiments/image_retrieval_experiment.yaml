@@ -1,0 +1,103 @@
+# Document Image Retrieval Experiment
+# This configuration demonstrates image document retrieval with OCR and embedding approaches
+
+description: "Document image retrieval experiment comparing OCR-based and embedding-based approaches"
+
+models:
+  - name: "ocr_bm25"
+    type: "image_retrieval"
+    model_name_or_path: ""  # OCR model doesn't need pre-trained path
+    parameters:
+      retrieval_method: "ocr"
+      ocr_engine: "tesseract"
+      ocr_config:
+        lang: "eng"
+        psm: 6  # Uniform block of text
+      sparse_model_params:
+        k1: 1.2
+        b: 0.75
+      preprocessing:
+        resize_images: true
+        target_size: [800, 1200]
+        enhance_contrast: true
+    device: "cpu"
+
+  - name: "ocr_dense"
+    type: "image_retrieval"
+    model_name_or_path: "sentence-transformers/all-MiniLM-L6-v2"
+    parameters:
+      retrieval_method: "ocr"
+      ocr_engine: "tesseract"
+      ocr_config:
+        lang: "eng"
+        psm: 6
+      dense_model_params:
+        normalize_embeddings: true
+        model_architecture: "sentence_transformers"
+      preprocessing:
+        resize_images: true
+        target_size: [800, 1200]
+    device: "auto"
+    batch_size: 16
+
+  - name: "clip_embedding"
+    type: "image_retrieval"
+    model_name_or_path: "sentence-transformers/clip-ViT-B-32"
+    parameters:
+      retrieval_method: "embedding"
+      image_preprocessing:
+        resize: [224, 224]
+        normalize: true
+        mean: [0.485, 0.456, 0.406]
+        std: [0.229, 0.224, 0.225]
+      text_preprocessing:
+        max_length: 77
+        truncate: true
+    device: "auto"
+    batch_size: 8
+
+datasets:
+  - name: "document_qa_images"
+    type: "image"
+    data_dir: "/data/document_images/docvqa"
+    config_overrides:
+      require_ocr_text: true
+      supported_image_formats: [".jpg", ".png", ".pdf"]
+      image_preprocessing_options:
+        max_size_mb: 50
+      cache_enabled: true
+      max_samples: 5000
+
+  - name: "scientific_papers"
+    type: "image"
+    data_dir: "/data/document_images/papers"
+    config_overrides:
+      ocr_enabled: true
+      image_extensions: [".pdf", ".png"]
+      cache_enabled: true
+      preprocessing:
+        convert_pdf_to_images: true
+        pdf_dpi: 200
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision"]
+  k_values: [1, 3, 5, 10, 20, 50]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 100  # Smaller top-k for image experiments
+  save_run_file: true
+  run_file_format: "json"
+
+output:
+  output_dir: "./image_experiments"
+  experiment_name: "document_image_retrieval"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: false
+
+metadata:
+  purpose: "Compare OCR vs embedding approaches for document image retrieval"
+  image_types: "Scientific papers, document QA images"
+  preprocessing: "OCR extraction and CLIP embeddings"
+  notes: "Requires OCR dependencies (tesseract) and CLIP model"

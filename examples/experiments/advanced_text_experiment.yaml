@@ -1,0 +1,87 @@
+# Advanced Text Model Comparison
+# This configuration compares multiple dense models with different architectures
+
+description: "Comprehensive comparison of dense retrieval models on multiple datasets"
+
+models:
+  - name: "bm25_optimized"
+    type: "sparse"
+    model_name_or_path: ""
+    parameters:
+      k1: 1.4  # Slightly higher than default
+      b: 0.6   # Lower b value
+    device: "cpu"
+
+  - name: "sentence_bert_base"
+    type: "dense"
+    model_name_or_path: "sentence-transformers/all-MiniLM-L12-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformers"
+    device: "auto"
+    batch_size: 16  # Smaller batch for larger model
+    max_seq_length: 512
+
+  - name: "sentence_bert_large"
+    type: "dense"
+    model_name_or_path: "sentence-transformers/all-mpnet-base-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformers"
+    device: "auto"
+    batch_size: 8
+    max_seq_length: 512
+
+  - name: "dpr_question_encoder"
+    type: "dense"
+    model_name_or_path: "facebook/dpr-question_encoder-single-nq-base"
+    parameters:
+      model_architecture: "dpr"
+      normalize_embeddings: true
+    device: "auto"
+    batch_size: 16
+    max_seq_length: 512
+
+datasets:
+  - name: "msmarco_passage"
+    type: "text"
+    data_dir: "/data/msmarco/passage"
+    config_overrides:
+      cache_enabled: true
+      validation_enabled: true
+
+  - name: "natural_questions"
+    type: "text"
+    data_dir: "/data/natural_questions"
+    config_overrides:
+      cache_enabled: true
+      max_samples: 50000
+
+  - name: "trec_dl_2019"
+    type: "text"
+    data_dir: "/data/trec_dl/2019"
+    config_overrides:
+      cache_enabled: true
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20, 50, 100, 200, 1000]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 1000
+  save_run_file: true
+  run_file_format: "trec"
+
+output:
+  output_dir: "./advanced_experiments"
+  experiment_name: "dense_model_comparison"
+  save_models: true
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: false
+
+metadata:
+  purpose: "Compare state-of-the-art dense retrieval models"
+  datasets_source: "MS MARCO, Natural Questions, TREC DL"
+  hardware_requirements: "GPU recommended for dense models"
+  estimated_runtime: "2-4 hours depending on hardware"

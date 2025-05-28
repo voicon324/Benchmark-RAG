@@ -1,0 +1,54 @@
+# Basic Text Retrieval Experiment
+# This configuration demonstrates a simple experiment comparing BM25 and dense models
+
+description: "Basic text retrieval benchmark comparing sparse and dense models"
+
+models:
+  - name: "bm25_baseline"
+    type: "sparse"
+    model_name_or_path: ""  # BM25 doesn't need a pre-trained model path
+    parameters:
+      k1: 1.2
+      b: 0.75
+    device: "auto"
+
+  - name: "sentence_bert_mini"
+    type: "dense" 
+    model_name_or_path: "sentence-transformers/all-MiniLM-L6-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformers"
+    device: "auto"
+    batch_size: 32
+    max_seq_length: 512
+
+datasets:
+  - name: "sample_text_dataset"
+    type: "text"
+    data_dir: "/path/to/your/text/dataset"
+    config_overrides:
+      cache_enabled: true
+      max_samples: 10000  # Limit for faster testing
+      validation_enabled: true
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision"]
+  k_values: [1, 3, 5, 10, 20, 100]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 1000
+  save_run_file: true
+  run_file_format: "trec"
+
+output:
+  output_dir: "./experiment_results"
+  experiment_name: "basic_text_retrieval"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: false
+
+metadata:
+  purpose: "Baseline comparison"
+  author: "NewAIBench User"
+  notes: "First experiment with framework"
