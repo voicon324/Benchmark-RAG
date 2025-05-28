@@ -415,14 +415,14 @@ def main():
         return
     
     # Confirm execution
-    try:
-        response = input("\nProceed with experiment execution? (y/N): ").strip().lower()
-        if response not in ['y', 'yes']:
-            print("Experiment cancelled.")
-            return
-    except KeyboardInterrupt:
-        print("\nExperiment cancelled.")
-        return
+    # try:
+    #     response = input("\nProceed with experiment execution? (y/N): ").strip().lower()
+    #     if response not in ['y', 'yes']:
+    #         print("Experiment cancelled.")
+    #         return
+    # except KeyboardInterrupt:
+    #     print("\nExperiment cancelled.")
+    #     return
     
     # Run experiments
     try:
