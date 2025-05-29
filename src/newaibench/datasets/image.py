@@ -507,7 +507,7 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
         """Apply preprocessing to image corpus."""
         processed_corpus = {}
         options = self.config.preprocessing_options or {}
-        
+        print(f"Applying preprocessing to {len(corpus)} image documents")
         for doc_id, doc in corpus.items():
             # Apply text preprocessing to OCR text
             if "text" in doc and doc["text"]:
