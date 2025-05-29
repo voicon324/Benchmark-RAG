@@ -491,7 +491,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                         image_embeddings = self.model(**batch_images_processed)
                     
                     # Convert to numpy and normalize if requested
-                    embeddings = image_embeddings.cpu().numpy()
+                    embeddings = image_embeddings.cpu().float().numpy()
                     
                     if self.normalize_embeddings:
                         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
