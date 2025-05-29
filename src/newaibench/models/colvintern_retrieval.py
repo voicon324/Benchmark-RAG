@@ -222,11 +222,11 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                 return None
             
             # Check file size
-            file_size_mb = image_path.stat().st_size / (1024 * 1024)
-            if file_size_mb > self.max_image_size_mb:
-                print(f"Image too large ({file_size_mb:.1f}MB): {image_path}")
-                logger.warning(f"Image too large ({file_size_mb:.1f}MB): {image_path}")
-                return None
+            # file_size_mb = image_path.stat().st_size / (1024 * 1024)
+            # if file_size_mb > self.max_image_size_mb:
+            #     print(f"Image too large ({file_size_mb:.1f}MB): {image_path}")
+            #     logger.warning(f"Image too large ({file_size_mb:.1f}MB): {image_path}")
+            #     return None
             
             # Load image
             print(f"Loading image: {image_path}")
