@@ -33,66 +33,69 @@ except ImportError:
 # Import base classes
 from .base import BaseRetrievalModel, ModelType
 
-import torch
+import numpy as np
 
-def combine_tensors(tensor_list):
+def stack_uneven_arrays(list_of_arrays, fill_value=0):
     """
-    Gom một danh sách các tensor [X, y_i, Z] thành một tensor [N*X, max(y_i), Z].
+    Gom một danh sách các mảng NumPy 2D có số hàng khác nhau (nhưng cùng số cột)
+    thành một mảng NumPy 3D duy nhất.
 
     Args:
-        tensor_list (list of torch.Tensor): Danh sách các tensor đầu vào.
-                                            Mỗi tensor phải có 3 chiều.
-                                            Kích thước chiều thứ nhất (X) và thứ ba (Z)
-                                            phải giống nhau cho tất cả các tensor.
+        list_of_arrays (list): Danh sách các mảng NumPy 2D.
+                               Mỗi mảng có thể có số hàng khác nhau (y_i)
+                               nhưng phải có cùng số cột (z).
+        fill_value (float, optional): Giá trị để điền vào các phần tử
+                                      của mảng kết quả không được phủ bởi
+                                      dữ liệu từ các mảng đầu vào.
+                                      Mặc định là 0.
 
     Returns:
-        torch.Tensor: Tensor kết quả.
+        numpy.ndarray: Mảng NumPy 3D có kích thước [a, b, c], trong đó:
+                       a = len(list_of_arrays)
+                       b = max(array.shape[0] for array in list_of_arrays)
+                       c = list_of_arrays[0].shape[1] (giả sử tất cả đều giống nhau)
+                       Hoặc None nếu danh sách đầu vào rỗng hoặc các mảng không hợp lệ.
     """
-    if not tensor_list:
-        # Trả về tensor rỗng nếu danh sách rỗng, hoặc bạn có thể raise lỗi
-        # return torch.empty(0) # PyTorch không có hàm này, có thể dùng:
-        return torch.tensor([])
+    if not list_of_arrays:
+        print("Danh sách đầu vào rỗng.")
+        return None
 
+    # Kiểm tra xem tất cả các mảng có phải là 2D và có cùng số cột không
+    num_cols_first_array = -1
+    for i, arr in enumerate(list_of_arrays):
+        if not isinstance(arr, np.ndarray) or arr.ndim != 2:
+            print(f"Phần tử thứ {i} không phải là mảng NumPy 2D.")
+            return None
+        if i == 0:
+            num_cols_first_array = arr.shape[1]
+        elif arr.shape[1] != num_cols_first_array:
+            print(f"Các mảng không có cùng số cột. Mảng 0 có {num_cols_first_array} cột, mảng {i} có {arr.shape[1]} cột.")
+            return None
 
-    # Giả sử các tensor đã thỏa mãn x_i = x_j, z_i = z_j
-    # và danh sách không rỗng
-    print(f"Combining {len(tensor_list)} tensors with shapes: {[t.shape for t in tensor_list]}")
-    X_common = tensor_list[0].shape[0]
-    Z_common = tensor_list[0].shape[2]
-    # num_tensors = len(tensor_list) # Không dùng trực tiếp biến này trong logic sau
+    # a: số lượng mảng
+    a = len(list_of_arrays)
 
-    # 1. Xác định max_y
-    max_y = 0
-    for t in tensor_list:
-        if t.dim() != 3:
-            raise ValueError("Tất cả các tensor phải là tensor 3 chiều.")
-        if t.shape[0] != X_common or t.shape[2] != Z_common:
-            raise ValueError(
-                f"Tensor có shape {t.shape} không nhất quán với X_common={X_common} và Z_common={Z_common}."
-            )
-        if t.shape[1] > max_y:
-            max_y = t.shape[1]
+    # c: số cột (z), giả định tất cả các mảng có cùng số cột
+    c = num_cols_first_array
 
-    # 2. Padding và thu thập các tensor đã được pad
-    padded_tensors = []
-    for t in tensor_list:
-        y_i = t.shape[1]
-        padding_amount_y = max_y - y_i
-        
-        # Tuple padding cho F.pad: (pad_left_dimN, pad_right_dimN, pad_left_dimN-1, pad_right_dimN-1, ...)
-        # Với tensor 3D [dim0, dim1, dim2], thứ tự pad là cho các chiều từ cuối lên đầu (dim2, dim1, dim0).
-        # (pad_z_left, pad_z_right, pad_y_bottom, pad_y_top, pad_x_depth_start, pad_x_depth_end)
-        # Ta muốn pad chiều thứ 1 (y), ở phía cuối của chiều đó.
-        padding_tuple = (0, 0,                  # Không pad chiều z (dim 2)
-                         0, padding_amount_y,  # Pad ở cuối chiều y (dim 1)
-                         0, 0)                  # Không pad chiều x (dim 0)
-        padded_t = torch.nn.functional.pad(t, padding_tuple, mode='constant', value=0)
-        padded_tensors.append(padded_t)
+    # b: số hàng tối đa (max y)
+    # Sử dụng list comprehension để lấy số hàng của mỗi mảng, sau đó tìm max
+    # Xử lý trường hợp list_of_arrays rỗng (đã được kiểm tra ở trên)
+    max_rows = 0
+    if a > 0:
+        max_rows = max(arr.shape[0] for arr in list_of_arrays)
+    b = max_rows
 
-    # 3. Concatenate các tensor đã được pad dọc theo chiều thứ nhất (dim=0)
-    result_tensor = torch.cat(padded_tensors, dim=0)
+    # Tạo mảng 3D kết quả, khởi tạo với giá trị fill_value
+    # (ví dụ: 0 hoặc np.nan)
+    result_array = np.full((a, b, c), fill_value=fill_value, dtype=list_of_arrays[0].dtype) # Giữ nguyên dtype
 
-    return result_tensor
+    # Điền dữ liệu từ các mảng 2D vào mảng 3D
+    for i, arr_2d in enumerate(list_of_arrays):
+        rows_in_current_array = arr_2d.shape[0]
+        result_array[i, :rows_in_current_array, :] = arr_2d
+
+    return result_array
 
 logger = logging.getLogger(__name__)
 
@@ -568,7 +571,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
     
     def _search_brute_force(self, query_embeddings: np.ndarray, top_k: int) -> List[List[Tuple[str, float]]]:
         """Perform brute force similarity search."""
-        doc_embeddings_array = combine_tensors([self.doc_embeddings[doc_id] for doc_id in self.doc_ids_list])
+        doc_embeddings_array = stack_uneven_arrays([self.doc_embeddings[doc_id] for doc_id in self.doc_ids_list])
         
         # Use multi-vector scoring if configured
         if self.scoring_method == 'multi_vector':
@@ -693,7 +696,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         
         # Prepare embeddings array for search
         query_ids = [q['query_id'] for q in queries]
-        query_embeddings = combine_tensors([query_embeddings_dict[qid] for qid in query_ids])
+        query_embeddings = stack_uneven_arrays([query_embeddings_dict[qid] for qid in query_ids])
         
         # Perform search
         if self.use_ann_index and self.ann_index is not None:
