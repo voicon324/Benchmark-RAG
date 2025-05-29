@@ -296,6 +296,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                     
                     # Move to device and set correct data types (following API example)
                     if torch.cuda.is_available():
+                        print(f'Batch queries processed: {batch_queries_processed}')
                         batch_queries_processed["input_ids"] = batch_queries_processed["input_ids"].cuda()
                         batch_queries_processed["attention_mask"] = batch_queries_processed["attention_mask"].cuda().bfloat16()
                     else:
