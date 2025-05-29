@@ -436,12 +436,14 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
             
             # Check if image file exists
             if not image_path.exists():
+                print(f"Image file not found for document {doc_id}: {image_path}")
                 logger.warning(f"Image file not found for document {doc_id}: {image_path}")
                 continue
             
             # Check file format
             if self.config.image_preprocessing_options.get("validate_format", True):
                 if not self._is_valid_image_format(image_path):
+                    print(f"Unsupported image format for document {doc_id}: {image_path}")
                     logger.warning(f"Unsupported image format for document {doc_id}: {image_path}")
                     continue
             
@@ -453,6 +455,7 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
             # Check for corruption if enabled
             if self.config.image_preprocessing_options.get("check_corruption", False):
                 if self._is_image_corrupted(image_path):
+                    print(f"Corrupted image file for document {doc_id}: {image_path}")
                     logger.warning(f"Corrupted image for document {doc_id}: {image_path}")
                     continue
             
