@@ -159,6 +159,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         self.ann_backend = params.get('ann_backend', 'faiss')
         self.normalize_embeddings = params.get('normalize_embeddings', True)
         self.scoring_method = params.get('scoring_method', 'cosine_similarity')  # 'multi_vector' or 'cosine_similarity'
+        self.query_batch_size_scoring = params.get('query_batch_size_scoring', 1)  # Batch size for multi-vector scoring
         
         # Model components (initialized in load_model)
         self.model = None
@@ -579,8 +580,12 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             query_embeddings_tensor = torch.tensor(query_embeddings).float()
             doc_embeddings_tensor = torch.tensor(doc_embeddings_array).float()
             # print(f'Query embeddings shape: {query_embeddings_tensor.shape}, Document embeddings shape: {doc_embeddings_tensor.shape}')
-            # Use ColVintern's multi-vector scoring
-            similarities_tensor = self.score_multi_vector(query_embeddings_tensor, doc_embeddings_tensor)
+            # Use ColVintern's multi-vector scoring with batch processing
+            similarities_tensor = self.score_multi_vector(
+                query_embeddings_tensor, 
+                doc_embeddings_tensor, 
+                query_batch_size=self.query_batch_size_scoring
+            )
             similarities = similarities_tensor.numpy()
             
             logger.debug(f"Using multi-vector scoring for {len(query_embeddings)} queries x {len(doc_embeddings_array)} documents")
@@ -634,25 +639,58 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                     all_scores.append(1 / (1 + dist))  # L2 distance to similarity
             return np.array(all_scores), np.array(all_indices)
     
-    def score_multi_vector(self, query_embeddings: torch.Tensor, image_embeddings: torch.Tensor) -> torch.Tensor:
+    def score_multi_vector(self, query_embeddings: torch.Tensor, image_embeddings: torch.Tensor, 
+                          query_batch_size: int = 1) -> torch.Tensor:
         """
         Compute multi-vector scores using ColVintern's scoring method.
+        Processes queries in small batches to avoid memory overflow with large datasets.
         
         Args:
-            query_embeddings: Query embeddings from model
-            image_embeddings: Image embeddings from model
+            query_embeddings: Query embeddings from model [num_queries, embedding_dim]
+            image_embeddings: Image embeddings from model [num_images, embedding_dim]
+            query_batch_size: Number of queries to process at once (default=1 for maximum memory safety)
             
         Returns:
-            Similarity scores
+            Similarity scores [num_queries, num_images]
         """
-        try:
-            # Use ColVintern's processor scoring method
-            scores = self.processor.score_multi_vector(query_embeddings, image_embeddings)
-            return scores
-        except Exception as e:
-            logger.warning(f"Failed to use ColVintern multi-vector scoring, falling back to dot product: {e}")
-            # Fallback to simple dot product
-            return torch.matmul(query_embeddings, image_embeddings.T)
+        num_queries = query_embeddings.shape[0]
+        num_images = image_embeddings.shape[0]
+        
+        # Log memory usage info
+        logger.debug(f"Computing multi-vector scores: {num_queries} queries x {num_images} images (batch_size={query_batch_size})")
+        
+        # Initialize result tensor
+        all_scores = torch.zeros(num_queries, num_images, dtype=query_embeddings.dtype, device=query_embeddings.device)
+        
+        # Process queries in small batches to avoid memory overflow
+        for i in range(0, num_queries, query_batch_size):
+            end_idx = min(i + query_batch_size, num_queries)
+            query_batch = query_embeddings[i:end_idx]  # [batch_size, embedding_dim]
+            batch_size = end_idx - i
+            
+            try:
+                # Use ColVintern's processor scoring method for query batch
+                with torch.no_grad():  # Ensure no gradients are computed
+                    scores = self.processor.score_multi_vector(query_batch, image_embeddings)
+                all_scores[i:end_idx] = scores  # Store batch results
+                
+                # Clear cache periodically to manage memory
+                if i % (10 * query_batch_size) == 0 and torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                
+            except Exception as e:
+                logger.warning(f"Failed to use ColVintern multi-vector scoring for batch {i}-{end_idx}, falling back to dot product: {e}")
+                # Fallback to simple dot product for this batch
+                with torch.no_grad():
+                    scores = torch.matmul(query_batch, image_embeddings.T)
+                all_scores[i:end_idx] = scores
+        
+        # Final memory cleanup
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        logger.debug(f"Multi-vector scoring completed for {num_queries} queries")
+        return all_scores
     
     def predict(self, 
                 queries: List[Dict[str, str]], 
@@ -756,6 +794,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             "ann_backend": self.ann_backend if self.use_ann_index else None,
             "normalize_embeddings": self.normalize_embeddings,
             "scoring_method": self.scoring_method,
+            "query_batch_size_scoring": self.query_batch_size_scoring,
             "supported_formats": self.supported_formats,
             "batch_size_images": self.batch_size_images,
             "batch_size_text": self.batch_size_text
