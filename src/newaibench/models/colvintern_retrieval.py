@@ -33,6 +33,66 @@ except ImportError:
 # Import base classes
 from .base import BaseRetrievalModel, ModelType
 
+import torch
+
+def combine_tensors(tensor_list):
+    """
+    Gom một danh sách các tensor [X, y_i, Z] thành một tensor [N*X, max(y_i), Z].
+
+    Args:
+        tensor_list (list of torch.Tensor): Danh sách các tensor đầu vào.
+                                            Mỗi tensor phải có 3 chiều.
+                                            Kích thước chiều thứ nhất (X) và thứ ba (Z)
+                                            phải giống nhau cho tất cả các tensor.
+
+    Returns:
+        torch.Tensor: Tensor kết quả.
+    """
+    if not tensor_list:
+        # Trả về tensor rỗng nếu danh sách rỗng, hoặc bạn có thể raise lỗi
+        # return torch.empty(0) # PyTorch không có hàm này, có thể dùng:
+        return torch.tensor([])
+
+
+    # Giả sử các tensor đã thỏa mãn x_i = x_j, z_i = z_j
+    # và danh sách không rỗng
+    X_common = tensor_list[0].shape[0]
+    Z_common = tensor_list[0].shape[2]
+    # num_tensors = len(tensor_list) # Không dùng trực tiếp biến này trong logic sau
+
+    # 1. Xác định max_y
+    max_y = 0
+    for t in tensor_list:
+        if t.dim() != 3:
+            raise ValueError("Tất cả các tensor phải là tensor 3 chiều.")
+        if t.shape[0] != X_common or t.shape[2] != Z_common:
+            raise ValueError(
+                f"Tensor có shape {t.shape} không nhất quán với X_common={X_common} và Z_common={Z_common}."
+            )
+        if t.shape[1] > max_y:
+            max_y = t.shape[1]
+
+    # 2. Padding và thu thập các tensor đã được pad
+    padded_tensors = []
+    for t in tensor_list:
+        y_i = t.shape[1]
+        padding_amount_y = max_y - y_i
+        
+        # Tuple padding cho F.pad: (pad_left_dimN, pad_right_dimN, pad_left_dimN-1, pad_right_dimN-1, ...)
+        # Với tensor 3D [dim0, dim1, dim2], thứ tự pad là cho các chiều từ cuối lên đầu (dim2, dim1, dim0).
+        # (pad_z_left, pad_z_right, pad_y_bottom, pad_y_top, pad_x_depth_start, pad_x_depth_end)
+        # Ta muốn pad chiều thứ 1 (y), ở phía cuối của chiều đó.
+        padding_tuple = (0, 0,                  # Không pad chiều z (dim 2)
+                         0, padding_amount_y,  # Pad ở cuối chiều y (dim 1)
+                         0, 0)                  # Không pad chiều x (dim 0)
+        padded_t = torch.nn.functional.pad(t, padding_tuple, mode='constant', value=0)
+        padded_tensors.append(padded_t)
+
+    # 3. Concatenate các tensor đã được pad dọc theo chiều thứ nhất (dim=0)
+    result_tensor = torch.cat(padded_tensors, dim=0)
+
+    return result_tensor
+
 logger = logging.getLogger(__name__)
 
 
@@ -507,7 +567,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
     
     def _search_brute_force(self, query_embeddings: np.ndarray, top_k: int) -> List[List[Tuple[str, float]]]:
         """Perform brute force similarity search."""
-        doc_embeddings_array = np.array([self.doc_embeddings[doc_id] for doc_id in self.doc_ids_list])
+        doc_embeddings_array = combine_tensors([self.doc_embeddings[doc_id] for doc_id in self.doc_ids_list])
         
         # Use multi-vector scoring if configured
         if self.scoring_method == 'multi_vector':
@@ -632,7 +692,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         
         # Prepare embeddings array for search
         query_ids = [q['query_id'] for q in queries]
-        query_embeddings = np.array([query_embeddings_dict[qid] for qid in query_ids])
+        query_embeddings = combine_tensors([query_embeddings_dict[qid] for qid in query_ids])
         
         # Perform search
         if self.use_ann_index and self.ann_index is not None:
