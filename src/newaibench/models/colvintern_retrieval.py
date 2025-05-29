@@ -56,6 +56,7 @@ def combine_tensors(tensor_list):
 
     # Giả sử các tensor đã thỏa mãn x_i = x_j, z_i = z_j
     # và danh sách không rỗng
+    print(f"Combining {len(tensor_list)} tensors with shapes: {[t.shape for t in tensor_list]}")
     X_common = tensor_list[0].shape[0]
     Z_common = tensor_list[0].shape[2]
     # num_tensors = len(tensor_list) # Không dùng trực tiếp biến này trong logic sau
