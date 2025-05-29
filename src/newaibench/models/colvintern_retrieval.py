@@ -208,6 +208,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             PIL Image object or None if loading fails
         """
         try:
+            print(f"Loading image from path: {image_path}")
             # Check if file exists
             if not image_path.exists():
                 print(f"Image file not found: {image_path}")
