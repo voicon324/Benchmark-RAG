@@ -115,6 +115,8 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
     - Robust error handling for corrupted images
     - Optional ANN indexing for fast search
     - Multi-vector scoring with ColVintern
+    - Progress tracking for long-running operations
+    - Memory-efficient query processing to avoid overflow
     
     Example:
         >>> config = {
@@ -126,7 +128,9 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         ...         "ann_backend": "faiss",
         ...         "normalize_embeddings": True,
         ...         "batch_size_images": 8,
-        ...         "batch_size_text": 32
+        ...         "batch_size_text": 32,
+        ...         "scoring_method": "multi_vector",
+        ...         "query_batch_size_scoring": 2
         ...     }
         ... }
         >>> model = ColVinternDocumentRetriever(config)
@@ -572,14 +576,19 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
     
     def _search_brute_force(self, query_embeddings: np.ndarray, top_k: int) -> List[List[Tuple[str, float]]]:
         """Perform brute force similarity search."""
+        logger.info(f"Starting brute force search for {len(query_embeddings)} queries against {len(self.doc_ids_list)} documents")
+        
         doc_embeddings_array = stack_uneven_arrays([self.doc_embeddings[doc_id] for doc_id in self.doc_ids_list])
         
         # Use multi-vector scoring if configured
         if self.scoring_method == 'multi_vector':
+            logger.info(f"Using multi-vector scoring method with batch size {self.query_batch_size_scoring}")
+            
             # Convert to tensors for multi-vector scoring
             query_embeddings_tensor = torch.tensor(query_embeddings).float()
             doc_embeddings_tensor = torch.tensor(doc_embeddings_array).float()
             # print(f'Query embeddings shape: {query_embeddings_tensor.shape}, Document embeddings shape: {doc_embeddings_tensor.shape}')
+            
             # Use ColVintern's multi-vector scoring with batch processing
             similarities_tensor = self.score_multi_vector(
                 query_embeddings_tensor, 
@@ -590,9 +599,15 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             
             logger.debug(f"Using multi-vector scoring for {len(query_embeddings)} queries x {len(doc_embeddings_array)} documents")
         else:
+            logger.info("Using traditional cosine similarity scoring")
+            
             # Traditional cosine similarity scoring
             similarities = []
-            for query_emb in query_embeddings:
+            for i, query_emb in enumerate(query_embeddings):
+                # Show progress for cosine similarity
+                if i % max(1, len(query_embeddings) // 10) == 0 or i == len(query_embeddings) - 1:
+                    print(f"Cosine similarity progress: {i+1}/{len(query_embeddings)} queries")
+                
                 # Compute similarities
                 if self.normalize_embeddings:
                     query_similarities = np.dot(query_emb, doc_embeddings_array.T)
@@ -604,6 +619,8 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             similarities = np.array(similarities)
             
             logger.debug(f"Using cosine similarity for {len(query_embeddings)} queries x {len(doc_embeddings_array)} documents")
+        
+        logger.info("Processing search results...")
         
         # Process results for each query
         results = []
@@ -618,6 +635,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             ]
             results.append(query_results)
         
+        logger.info(f"Brute force search completed for {len(query_embeddings)} queries")
         return results
     
     def _search_ann(self, query_embeddings: np.ndarray, top_k: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -657,13 +675,24 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         num_images = image_embeddings.shape[0]
         
         # Log memory usage info
-        logger.debug(f"Computing multi-vector scores: {num_queries} queries x {num_images} images (batch_size={query_batch_size})")
+        logger.info(f"Computing multi-vector scores: {num_queries} queries x {num_images} images (batch_size={query_batch_size})")
         
         # Initialize result tensor
         all_scores = torch.zeros(num_queries, num_images, dtype=query_embeddings.dtype, device=query_embeddings.device)
         
+        # Calculate total batches for progress tracking
+        total_batches = (num_queries + query_batch_size - 1) // query_batch_size
+        
+        # Initialize progress bar for multi-vector scoring
+        progress_bar = None
+        if TQDM_AVAILABLE:
+            try:
+                progress_bar = tqdm(total=total_batches, desc="Multi-vector scoring", unit="batch")
+            except ImportError:
+                pass
+        
         # Process queries in small batches to avoid memory overflow
-        for i in range(0, num_queries, query_batch_size):
+        for batch_idx, i in enumerate(range(0, num_queries, query_batch_size)):
             end_idx = min(i + query_batch_size, num_queries)
             query_batch = query_embeddings[i:end_idx]  # [batch_size, embedding_dim]
             batch_size = end_idx - i
@@ -675,7 +704,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                 all_scores[i:end_idx] = scores  # Store batch results
                 
                 # Clear cache periodically to manage memory
-                if i % (10 * query_batch_size) == 0 and torch.cuda.is_available():
+                if batch_idx % 10 == 0 and torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 
             except Exception as e:
@@ -684,12 +713,28 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                 with torch.no_grad():
                     scores = torch.matmul(query_batch, image_embeddings.T)
                 all_scores[i:end_idx] = scores
+            
+            # Update progress bar
+            if progress_bar:
+                progress_bar.set_postfix({
+                    'Queries': f"{end_idx}/{num_queries}",
+                    'Batch': f"{batch_idx+1}/{total_batches}"
+                })
+                progress_bar.update(1)
+            else:
+                # Print progress if no tqdm available
+                if (batch_idx + 1) % max(1, total_batches // 10) == 0 or batch_idx == total_batches - 1:
+                    print(f"Multi-vector scoring progress: {batch_idx+1}/{total_batches} batches ({end_idx}/{num_queries} queries)")
+        
+        # Close progress bar
+        if progress_bar:
+            progress_bar.close()
         
         # Final memory cleanup
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         
-        logger.debug(f"Multi-vector scoring completed for {num_queries} queries")
+        logger.info(f"Multi-vector scoring completed for {num_queries} queries")
         return all_scores
     
     def predict(self, 
