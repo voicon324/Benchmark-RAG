@@ -681,12 +681,15 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             logger.warning("Corpus has changed since indexing, re-indexing...")
             self.index_corpus(corpus, **kwargs)
         
+        print(f'Num corpus: {len(corpus)}, Num indexed: {len(self.doc_ids_list)}')
         # Filter documents with images
         image_corpus = {
             doc_id: doc for doc_id, doc in corpus.items()
             if self.image_path_field in doc and doc[self.image_path_field]
         }
         
+        print(f'Num image corpus: {len(image_corpus)}')
+
         if not image_corpus:
             logger.warning("No documents with images found in corpus")
             return {q['query_id']: {} for q in queries}
