@@ -398,8 +398,8 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                     images.append(image)
                     valid_doc_ids.append(doc_id)
                 else:
+                    print(f"Failed to load image for document {doc_id}")
                     failed_count += 1
-            print(f'Valid doc ids: {valid_doc_ids}')
             # Encode batch with ColVintern
             if images:
                 try:
