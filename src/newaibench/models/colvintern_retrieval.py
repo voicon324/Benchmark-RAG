@@ -158,7 +158,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             else:
                 logger.info("Loading model on CPU")
                 model_kwargs["torch_dtype"] = torch.float32  # Use float32 for CPU
-            
+            print(f'Model kwargs: {model_kwargs}')
             self.model = AutoModel.from_pretrained(
                 self.model_name_or_path,
                 **model_kwargs
