@@ -210,10 +210,10 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         try:
             print(f"Loading image from path: {image_path}")
             # Check if file exists
-            if not image_path.exists():
-                print(f"Image file not found: {image_path}")
-                logger.warning(f"Image file not found: {image_path}")
-                return None
+            # if not image_path.exists():
+            #     print(f"Image file not found: {image_path}")
+            #     logger.warning(f"Image file not found: {image_path}")
+            #     return None
             
             # Check file format
             # if image_path.suffix.lower() not in self.supported_formats:
