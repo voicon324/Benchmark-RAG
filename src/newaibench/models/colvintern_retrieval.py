@@ -228,11 +228,12 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                 return None
             
             # Load image
-            
+            print(f"Loading image: {image_path}")
             image = Image.open(image_path)
             
             # Convert to RGB if necessary
             if image.mode != 'RGB':
+                print(f"Converting image to RGB: {image_path}")
                 image = image.convert('RGB')
             
             return image
