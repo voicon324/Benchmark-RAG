@@ -141,6 +141,7 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
             else:
                 raise DatasetLoadingError(f"Unsupported format for image corpus: {self.config.format_type}")
             
+            print(f"Loaded {len(corpus)} image documents from corpus")
             # Validate and process images
             if self.config.validate_images:
                 corpus = self._validate_and_process_images(corpus)
