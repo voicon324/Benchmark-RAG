@@ -210,21 +210,25 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         try:
             # Check if file exists
             if not image_path.exists():
+                print(f"Image file not found: {image_path}")
                 logger.warning(f"Image file not found: {image_path}")
                 return None
             
             # Check file format
             if image_path.suffix.lower() not in self.supported_formats:
+                print(f"Unsupported image format: {image_path.suffix}")
                 logger.warning(f"Unsupported image format: {image_path.suffix}")
                 return None
             
             # Check file size
             file_size_mb = image_path.stat().st_size / (1024 * 1024)
             if file_size_mb > self.max_image_size_mb:
+                print(f"Image too large ({file_size_mb:.1f}MB): {image_path}")
                 logger.warning(f"Image too large ({file_size_mb:.1f}MB): {image_path}")
                 return None
             
             # Load image
+            
             image = Image.open(image_path)
             
             # Convert to RGB if necessary
