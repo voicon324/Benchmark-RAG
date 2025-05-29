@@ -216,10 +216,10 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                 return None
             
             # Check file format
-            if image_path.suffix.lower() not in self.supported_formats:
-                print(f"Unsupported image format: {image_path.suffix}")
-                logger.warning(f"Unsupported image format: {image_path.suffix}")
-                return None
+            # if image_path.suffix.lower() not in self.supported_formats:
+            #     print(f"Unsupported image format: {image_path.suffix}")
+            #     logger.warning(f"Unsupported image format: {image_path.suffix}")
+            #     return None
             
             # Check file size
             # file_size_mb = image_path.stat().st_size / (1024 * 1024)
