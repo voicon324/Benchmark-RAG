@@ -275,9 +275,6 @@ class ExperimentRunner:
             if hasattr(model, 'load_model') and callable(model.load_model):
                 model.load_model()
 
-            # 5 corpus example
-            corpus = corpus[:5] if hasattr(corpus, '__getitem__') and len(corpus) > 5 else corpus
-
             # Index corpus if needed
             if hasattr(model, 'index_corpus') and callable(model.index_corpus):
                 self.logger.info("Indexing corpus...")
