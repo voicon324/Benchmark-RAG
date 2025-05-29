@@ -241,7 +241,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                       queries: List[Dict[str, str]], 
                       **kwargs) -> Dict[str, np.ndarray]:
         """
-        Encode text queries using ColVintern.
+        Encode text queries using ColVintern in batches.
         
         Args:
             queries: List of query dictionaries with 'query_id' and 'text' keys
@@ -254,6 +254,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         
         query_embeddings = {}
         batch_size = kwargs.get('batch_size', self.batch_size_text)
+        show_progress = kwargs.get('show_progress', True)
         
         # Extract text queries
         text_queries = []
@@ -276,41 +277,63 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         # Encode queries in batches
         if text_queries:
             try:
-                # Process queries with ColVintern processor
-                batch_queries_processed = self.processor.process_queries(text_queries)
+                # Initialize progress bar
+                progress_bar = None
+                if show_progress and TQDM_AVAILABLE:
+                    try:
+                        total_batches = (len(text_queries) + batch_size - 1) // batch_size
+                        progress_bar = tqdm(total=total_batches, desc="Encoding queries", unit="batch")
+                    except ImportError:
+                        pass
                 
-                # Move to device and set correct data types (following API example)
-                if torch.cuda.is_available():
-                    batch_queries_processed["input_ids"] = batch_queries_processed["input_ids"].cuda()
-                    batch_queries_processed["attention_mask"] = batch_queries_processed["attention_mask"].cuda().bfloat16()
-                else:
-                    # Fallback for CPU
-                    batch_queries_processed["input_ids"] = batch_queries_processed["input_ids"]
-                    batch_queries_processed["attention_mask"] = batch_queries_processed["attention_mask"].float()
-                
-                # Get embeddings
-                with torch.no_grad():
-                    query_embeddings_tensor = self.model(**batch_queries_processed)
-                
-                # Convert to numpy and normalize if requested
-                embeddings = query_embeddings_tensor.cpu().numpy()
-                
-                if self.normalize_embeddings:
-                    embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-                
-                # Store embeddings
-                for query_id, embedding in zip(query_ids, embeddings):
-                    query_embeddings[query_id] = embedding
+                # Process queries in batches
+                for i in range(0, len(text_queries), batch_size):
+                    batch_texts = text_queries[i:i+batch_size]
+                    batch_query_ids = query_ids[i:i+batch_size]
                     
-                # Update embedding dimension if not set
-                if self.embedding_dim is None:
-                    self.embedding_dim = embeddings.shape[1]
+                    # Process queries with ColVintern processor
+                    batch_queries_processed = self.processor.process_queries(batch_texts)
+                    
+                    # Move to device and set correct data types (following API example)
+                    if torch.cuda.is_available():
+                        batch_queries_processed["input_ids"] = batch_queries_processed["input_ids"].cuda()
+                        batch_queries_processed["attention_mask"] = batch_queries_processed["attention_mask"].cuda().bfloat16()
+                    else:
+                        # Fallback for CPU
+                        batch_queries_processed["input_ids"] = batch_queries_processed["input_ids"]
+                        batch_queries_processed["attention_mask"] = batch_queries_processed["attention_mask"].float()
+                    
+                    # Get embeddings
+                    with torch.no_grad():
+                        query_embeddings_tensor = self.model(**batch_queries_processed)
+                    
+                    # Convert to numpy and normalize if requested
+                    embeddings = query_embeddings_tensor.cpu().numpy()
+                    
+                    if self.normalize_embeddings:
+                        embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+                    
+                    # Store embeddings
+                    for query_id, embedding in zip(batch_query_ids, embeddings):
+                        query_embeddings[query_id] = embedding
+                        
+                    # Update embedding dimension if not set
+                    if self.embedding_dim is None:
+                        self.embedding_dim = embeddings.shape[1]
+                    
+                    # Update progress bar
+                    if progress_bar:
+                        progress_bar.update(1)
+                
+                # Close progress bar
+                if progress_bar:
+                    progress_bar.close()
                 
             except Exception as e:
                 logger.error(f"Failed to encode queries with ColVintern: {e}")
                 raise
         
-        logger.info(f"Encoded {len(query_embeddings)} text queries")
+        logger.info(f"Encoded {len(query_embeddings)} text queries in batches of {batch_size}")
         return query_embeddings
     
     def encode_documents(self, 
