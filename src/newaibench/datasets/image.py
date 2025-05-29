@@ -147,6 +147,7 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
                 corpus = self._validate_and_process_images(corpus)
             
             # Apply text preprocessing
+            print(f'After loading, corpus has {len(corpus)} documents')
             corpus = self._preprocess_image_corpus(corpus)
             
             # Apply sampling if specified
