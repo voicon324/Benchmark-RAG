@@ -121,6 +121,7 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
             logger.debug("Returning cached image corpus")
             return self._corpus
         
+        print(f"Loading image corpus from: {self.config.dataset_path / self.config.corpus_file}")
         corpus_path = self.config.dataset_path / self.config.corpus_file
         if not corpus_path.exists():
             raise DatasetLoadingError(f"Corpus file not found: {corpus_path}")
