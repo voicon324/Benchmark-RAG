@@ -315,7 +315,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                         query_embeddings_tensor = self.model(**batch_queries_processed)
                     
                     # Convert to numpy and normalize if requested
-                    embeddings = query_embeddings_tensor.cpu().numpy()
+                    embeddings = query_embeddings_tensor.cpu().float().numpy()
                     
                     if self.normalize_embeddings:
                         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
