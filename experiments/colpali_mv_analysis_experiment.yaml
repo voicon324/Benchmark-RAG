@@ -1,0 +1,200 @@
+# ColPali Multi-Vector Scoring Focus Experiment
+# Focused comparison of multi-vector scoring methods with detailed analysis
+
+description: "ColPali Multi-Vector Scoring Deep Analysis on VietDocVQA"
+
+models:
+  # Primary ColPali with multi-vector scoring
+  - name: "colpali_mv_primary"
+    type: "multimodal"
+    model_name_or_path: "vidore/colpali-v1.2"
+    parameters:
+      # Core ColPali settings
+      model_architecture: "colpali"
+      retrieval_method: "embedding"
+      scoring_method: "multi_vector"
+      normalize_embeddings: true
+      
+      # Performance settings
+      batch_size_images: 6
+      batch_size_text: 20
+      use_ann_index: false  # Pure brute force for accurate comparison
+      
+      # ColPali model specifics
+      image_size: [490, 672]  # ColPali native resolution
+      max_length: 50          # ColPali text sequence length
+      patch_size: 14          # ViT patch size
+      
+      # Image processing
+      image_path_field: "image_path"
+      max_image_size_mb: 50
+      supported_formats: [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
+      
+      # Analysis settings
+      enable_score_analysis: true
+      save_embeddings: true
+      compute_detailed_metrics: true
+      
+    device: "cuda"
+    max_seq_length: 50
+
+  # ColPali with standard cosine similarity for comparison
+  - name: "colpali_cosine_baseline"
+    type: "multimodal"
+    model_name_or_path: "vidore/colpali-v1.2"
+    parameters:
+      # Core ColPali settings
+      model_architecture: "colpali"
+      retrieval_method: "embedding"
+      scoring_method: "cosine_similarity"  # Standard scoring
+      normalize_embeddings: true
+      
+      # Performance settings (same as multi-vector)
+      batch_size_images: 6
+      batch_size_text: 20
+      use_ann_index: false
+      
+      # ColPali model specifics (identical)
+      image_size: [490, 672]
+      max_length: 50
+      patch_size: 14
+      
+      # Image processing (identical)
+      image_path_field: "image_path"
+      max_image_size_mb: 50
+      supported_formats: [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
+      
+      # Analysis settings
+      enable_score_analysis: true
+      save_embeddings: true
+      compute_detailed_metrics: true
+      
+    device: "cuda"
+    max_seq_length: 50
+
+datasets:
+  - name: "vietdocvqa_mv_analysis"
+    type: "image"
+    data_dir: "/home/hkduy/NewAI/new_bench/NewAIBench_VietDocVQAII_with_OCR"
+    config_overrides:
+      # File specifications
+      qrels_file: "qrels.jsonl"
+      corpus_file: "corpus.jsonl"
+      queries_file: "queries.jsonl"
+      
+      # Processing settings
+      require_ocr_text: false
+      image_root_path: "/home/hkduy/NewAI/new_bench/NewAIBench_VietDocVQAII_with_OCR"
+      
+      # Optimization
+      cache_enabled: true
+      validation_enabled: true
+      preload_images: true
+      
+    # Focused dataset size for detailed analysis
+    max_samples: 500
+
+evaluation:
+  # Core metrics
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20, 50, 100]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 100
+  
+  # Output formats
+  save_run_file: true
+  run_file_format: "trec"
+  
+  # Multi-vector specific evaluation
+  multi_vector_analysis:
+    enable: true
+    correlation_analysis: true
+    score_distribution_analysis: true
+    ranking_overlap_analysis: true
+    performance_timing_analysis: true
+    statistical_significance_tests: true
+    
+  # Detailed comparison settings
+  comparative_analysis:
+    enable: true
+    methods: ["multi_vector", "cosine_similarity"]
+    metrics_comparison: true
+    ranking_comparison: true
+    efficiency_comparison: true
+
+output:
+  # Basic output settings
+  output_dir: "./results/colpali_multi_vector_analysis"
+  experiment_name: "colpali_mv_vs_cosine_detailed_analysis"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: true
+  
+  # Analysis outputs
+  generate_reports:
+    scoring_comparison_report: true
+    performance_analysis_report: true
+    statistical_analysis_report: true
+    visualization_report: true
+    
+  # Export formats
+  export_formats: ["json", "csv", "html"]
+  
+  # Detailed outputs
+  save_detailed_results:
+    score_matrices: true
+    embedding_similarities: true
+    ranking_differences: true
+    timing_breakdown: true
+
+# Advanced multi-vector analysis configuration
+analysis_config:
+  # Statistical analysis
+  statistical_tests:
+    pearson_correlation: true
+    spearman_correlation: true
+    kendall_tau: true
+    significance_threshold: 0.05
+    
+  # Performance analysis
+  timing_analysis:
+    measure_encoding_time: true
+    measure_scoring_time: true
+    measure_total_time: true
+    multiple_runs: 5  # For reliable timing
+    
+  # Ranking analysis
+  ranking_analysis:
+    top_k_overlap: [1, 3, 5, 10, 20]
+    ranking_correlation: true
+    position_differences: true
+    
+  # Visualization
+  visualizations:
+    score_distributions: true
+    correlation_plots: true
+    ranking_overlap_heatmaps: true
+    performance_plots: true
+    
+  # Dataset scaling test
+  scaling_test:
+    enable: true
+    sizes: [50, 100, 200, 300, 500]
+    metrics: ["encoding_time", "scoring_time", "accuracy"]
+
+metadata:
+  purpose: "Deep analysis of ColPali multi-vector scoring vs cosine similarity"
+  focus_areas:
+    - "Multi-vector scoring accuracy comparison"
+    - "Performance and efficiency analysis"  
+    - "Vietnamese document retrieval effectiveness"
+    - "Statistical significance of scoring differences"
+  dataset: "VietDocVQA Vietnamese educational documents"
+  expected_insights:
+    - "Multi-vector vs cosine scoring correlation"
+    - "Performance trade-offs"
+    - "Optimal scoring method for Vietnamese documents"
+  hardware_requirements: "CUDA-capable GPU (8GB+ VRAM recommended)"
+  estimated_runtime: "30-60 minutes"

@@ -1,0 +1,84 @@
+# ColPali Multi-Vector Scoring Experiment
+# This configuration tests ColPali model with multi-vector scoring approach on Vietnamese document VQA data
+
+description: "ColPali Multi-Vector Scoring Benchmark on VietDocVQA"
+
+models:
+  # ColPali with multi-vector scoring + brute force search
+  - name: "colpali_multi_vector_brute_force"
+    type: "multimodal"
+    model_name_or_path: "vidore/colpali-v1.2"
+    parameters:
+      retrieval_method: "embedding"
+      normalize_embeddings: true
+      model_architecture: "colpali"
+      scoring_method: "multi_vector"  # Multi-vector scoring method
+      batch_size_images: 4  # Smaller batch for large model
+      batch_size_text: 16
+      use_ann_index: false  # Brute force search (no ANN indexing)
+      search_method: "brute_force"  # Explicit brute force search
+      image_path_field: "image_path"
+      max_image_size_mb: 50
+      supported_formats: [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
+      # ColPali specific parameters
+      image_size: [490, 672]  # ColPali's native resolution
+      max_length: 50
+      patch_size: 14
+    device: "cuda"
+    max_seq_length: 50
+
+  # ColPali with FAISS optimization
+  # - name: "colpali_multi_vector_faiss"
+  #   type: "multimodal"
+  #   model_name_or_path: "vidore/colpali-v1.2" 
+  #   parameters:
+  #     retrieval_method: "embedding"
+  #     normalize_embeddings: true
+  #     model_architecture: "colpali"
+  #     scoring_method: "multi_vector"
+  #     batch_size_images: 4
+  #     batch_size_text: 16
+  #     use_ann_index: true
+  #     ann_backend: "faiss"
+  #     # FAISS configuration for multi-vector
+  #     faiss_index_factory_string: "Flat"
+  #     faiss_metric_type: "METRIC_INNER_PRODUCT"
+  #     faiss_use_gpu: true
+  #     image_path_field: "image_path"
+  #     max_image_size_mb: 50
+  #     supported_formats: [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
+  #     # ColPali specific parameters
+  #     image_size: [490, 672]
+  #     max_length: 50
+  #     patch_size: 14
+  #   device: "cuda"
+  #   max_seq_length: 50
+
+datasets:
+  - name: "vietdocvqa_colpali"
+    type: "image"
+    data_dir: "/home/hkduy/NewAI/new_bench/NewAIBench_VietDocVQAII_with_OCR"
+    config_overrides:
+      qrels_file: "qrels.jsonl"
+      require_ocr_text: false  # Using image features only
+      image_root_path: "/home/hkduy/NewAI/new_bench/NewAIBench_VietDocVQAII_with_OCR"
+      cache_enabled: true
+      validation_enabled: true
+    max_samples: 1000  # Manageable size for multi-vector scoring comparison
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20, 50]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 100
+  save_run_file: true
+  run_file_format: "trec"
+
+output:
+  output_dir: "./results/colpali_multi_vector_experiments"
+  experiment_name: "colpali_multi_vector_scoring_comparison"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: true

@@ -31,6 +31,12 @@ from .image_retrieval import (
     MultimodalDocumentRetriever
 )
 
+# Import ColVintern retrieval model
+from .colvintern_retrieval import ColVinternDocumentRetriever
+
+# Import ColPali retrieval model
+from .colpali_retrieval import ColPaliDocumentRetriever
+
 # Public API
 __all__ = [
     # Base classes
@@ -49,6 +55,12 @@ __all__ = [
     
     # Image retrieval models
     "OCRBasedDocumentRetriever",
-    "ImageEmbeddingDocumentRetriever",
-    "MultimodalDocumentRetriever"
+    "ImageEmbeddingDocumentRetriever", 
+    "MultimodalDocumentRetriever",
+    
+    # ColVintern retrieval model
+    "ColVinternDocumentRetriever",
+    
+    # ColPali retrieval model  
+    "ColPaliDocumentRetriever"
 ]

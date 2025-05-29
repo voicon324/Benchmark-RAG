@@ -248,6 +248,39 @@ class DenseTextRetriever(BaseRetrievalModel):
             logger.error(f"Failed to load model {self.model_name_or_path}: {str(e)}")
             raise
     
+    def _preprocess_text_for_phobert(self, text: str) -> str:
+        """
+        Preprocess text to handle OCR errors and characters that might cause issues with PhoBERT.
+        
+        Args:
+            text: Input text to preprocess
+            
+        Returns:
+            Cleaned text suitable for PhoBERT tokenization
+        """
+        import re
+        import unicodedata
+        
+        # Remove or replace problematic characters that often appear in OCR output
+        # Replace common OCR artifacts with spaces
+        text = re.sub(r'[`~@#$%^&*()_+=\[\]{}|\\:";\'<>?,./]', ' ', text)
+        
+        # Remove standalone special characters and numbers that might be OCR errors
+        text = re.sub(r'\b[0-9]+\b', ' ', text)  # Remove standalone numbers
+        text = re.sub(r'\b[a-zA-Z]\b', ' ', text)  # Remove standalone English letters
+        
+        # Normalize Unicode characters (handle diacritics properly)
+        text = unicodedata.normalize('NFC', text)
+        
+        # Remove extra whitespace
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        # If text becomes too short after cleaning, provide a fallback
+        if len(text.strip()) < 3:
+            text = "văn bản tiếng việt"  # Vietnamese fallback text
+            
+        return text
+
     def _encode_texts_transformers(self, texts: List[str], is_query: bool = False) -> np.ndarray:
         """
         Encode texts using raw transformers model.
@@ -271,14 +304,46 @@ class DenseTextRetriever(BaseRetrievalModel):
         for i in range(0, len(texts), self.config.batch_size):
             batch_texts = texts[i:i + self.config.batch_size]
             
-            # Tokenize
-            inputs = self.tokenizer(
-                batch_texts,
-                truncation=True,
-                padding=True,
-                max_length=self.max_seq_length,
-                return_tensors='pt'
-            ).to(self.config.device)
+            # Preprocess texts for PhoBERT (especially for OCR-processed Vietnamese text)
+            if 'phobert' in self.model_name_or_path.lower():
+                batch_texts = [self._preprocess_text_for_phobert(text) for text in batch_texts]
+            
+            # Tokenize with additional safety measures
+            try:
+                inputs = self.tokenizer(
+                    batch_texts,
+                    truncation=True,
+                    padding=True,
+                    max_length=self.max_seq_length,
+                    return_tensors='pt',
+                    add_special_tokens=True,
+                    return_attention_mask=True
+                )
+                
+                # Validate token IDs are within vocabulary bounds
+                if hasattr(self.tokenizer, 'vocab_size'):
+                    max_token_id = inputs['input_ids'].max().item()
+                    if max_token_id >= self.tokenizer.vocab_size:
+                        logger.warning(f"Token ID {max_token_id} exceeds vocab size {self.tokenizer.vocab_size}. Clamping to UNK token.")
+                        # Replace out-of-bounds tokens with UNK token
+                        inputs['input_ids'] = torch.clamp(inputs['input_ids'], 0, self.tokenizer.vocab_size - 1)
+                        # Set out-of-bounds tokens to UNK token ID
+                        unk_token_id = self.tokenizer.unk_token_id if self.tokenizer.unk_token_id is not None else 1
+                        inputs['input_ids'][inputs['input_ids'] >= self.tokenizer.vocab_size] = unk_token_id
+                
+                inputs = inputs.to(self.config.device)
+                
+            except Exception as e:
+                logger.error(f"Tokenization failed for batch {i}: {str(e)}")
+                # Create fallback tokens
+                fallback_text = ["văn bản tiếng việt"] * len(batch_texts)
+                inputs = self.tokenizer(
+                    fallback_text,
+                    truncation=True,
+                    padding=True,
+                    max_length=self.max_seq_length,
+                    return_tensors='pt'
+                ).to(self.config.device)
             
             # Encode
             with torch.no_grad():

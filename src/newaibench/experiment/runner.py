@@ -18,6 +18,7 @@ from dataclasses import dataclass, asdict
 from ..datasets import create_dataset_loader, DatasetConfig, DocumentImageDatasetConfig
 from ..models import BaseRetrievalModel, BM25Model, DenseTextRetriever
 from ..models.image_retrieval import OCRBasedDocumentRetriever, ImageEmbeddingDocumentRetriever
+from ..models.colvintern_retrieval import ColVinternDocumentRetriever
 from ..evaluation import Evaluator, EvaluationConfig
 
 from .config import ExperimentConfig, ModelConfiguration, DatasetConfiguration
@@ -172,6 +173,19 @@ class ExperimentRunner:
                     model = ImageEmbeddingDocumentRetriever(config)
                 else:
                     raise ValueError(f"Unknown image retrieval method: {retrieval_method}")
+                    
+            elif model_config.type == 'multimodal':
+                # Create multimodal retriever (e.g., ColVintern)
+                config = {
+                    'name': model_config.name,
+                    'model_name_or_path': model_config.model_name_or_path,
+                    'device': model_config.device,
+                    'batch_size': model_config.batch_size,
+                    'max_seq_length': model_config.max_seq_length,
+                    'parameters': model_config.parameters
+                }
+                model = ColVinternDocumentRetriever(config)
+                
             else:
                 raise ValueError(f"Unknown model type: {model_config.type}")
             

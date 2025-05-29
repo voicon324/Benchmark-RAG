@@ -1,0 +1,72 @@
+# VietDocVQA Hybrid Retrieval Experiment
+# This configuration compares both text (OCR) and image-based retrieval on Vietnamese document VQA data
+
+description: "VietDocVQA Hybrid Text+Image Retrieval Benchmark"
+
+models:
+  # Text-based models using OCR
+  - name: "bm25_ocr_baseline"
+    type: "sparse"
+    model_name_or_path: ""
+    parameters:
+      k1: 1.2
+      b: 0.75
+    device: "cpu"
+
+  - name: "phobert_ocr"
+    type: "dense"
+    model_name_or_path: "vinai/phobert-base"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "transformers"
+      pooling_mode: "mean"
+    device: "cuda"
+    batch_size: 16
+    max_seq_length: 256
+
+  # Image-based models
+  - name: "clip_multilingual_images"
+    type: "multimodal"
+    model_name_or_path: "sentence-transformers/clip-ViT-B-32-multilingual-v1"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "clip"
+      image_size: [224, 224]
+      batch_size_images: 8
+      batch_size_text: 32
+    device: "cuda"
+    max_seq_length: 77
+
+datasets:
+  # OCR text dataset
+  - name: "vietdocvqa_text"
+    type: "text"
+    data_dir: "/home/hkduy/NewAI/new_bench/NewAIBench_VietDocVQAII_with_OCR"
+    max_samples: 1500
+    models: ["bm25_ocr_baseline", "phobert_ocr"]  # Only text models for text dataset
+
+  # Image dataset
+  - name: "vietdocvqa_images"
+    type: "multimodal"
+    data_dir: "/home/hkduy/NewAI/new_bench/NewAIBench_VietDocVQAII_with_OCR"
+    max_samples: 1500
+    models: ["clip_multilingual_images"]  # Only multimodal models for image dataset
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 50
+  save_run_file: true
+  run_file_format: "trec"
+  comparative_analysis: true  # Enable comparison between text and image approaches
+
+output:
+  output_dir: "./results/vietdocvqa_hybrid_experiments"
+  experiment_name: "vietdocvqa_text_vs_image_comparison"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: true
+  generate_comparison_report: true

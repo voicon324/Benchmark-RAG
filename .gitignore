@@ -273,3 +273,4 @@ test_debug_*.py
 # Project data and documentation
 BKAI_law_data/
 docs/
+NewAIBench_VietDocVQAII_with_OCR/

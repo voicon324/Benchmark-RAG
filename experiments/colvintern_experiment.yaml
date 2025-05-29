@@ -1,0 +1,51 @@
+# ColVintern Image Retrieval Experiment
+# This configuration tests ColVintern model on Vietnamese document VQA data
+
+description: "ColVintern Vietnamese Document Retrieval Benchmark"
+
+models:
+  - name: "colvintern_vietnamese"
+    type: "multimodal"
+    model_name_or_path: "5CD-AI/ColVintern-1B-v1"
+    parameters:
+      retrieval_method: "embedding"
+      normalize_embeddings: true
+      model_architecture: "colvintern"
+      scoring_method: "multi_vector"  # Use ColVintern's multi-vector scoring
+      batch_size_images: 4  # Smaller batch size for large model
+      batch_size_text: 16
+      use_ann_index: false  # Use brute force search instead of ANN indexing
+      search_method: "brute_force"  # Explicit brute force search
+      image_path_field: "image_path"
+      max_image_size_mb: 50
+      supported_formats: [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
+    device: "cuda"
+    max_seq_length: 512
+
+datasets:
+  - name: "vietdocvqa_images"
+    type: "image"
+    data_dir: "/home/hkduy/NewAI/new_bench/NewAIBench_VietDocVQAII_with_OCR"
+    config_overrides:
+      qrels_file: "qrels.jsonl"
+      require_ocr_text: false  # Disable OCR text requirement since we're using image features
+      image_root_path: "/home/hkduy/NewAI/new_bench/NewAIBench_VietDocVQAII_with_OCR"
+    max_samples: 200  # Limit dataset for faster testing with brute force
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20, 50]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 100
+  save_run_file: true
+  run_file_format: "trec"
+  save_run_file: true
+
+output:
+  output_dir: "./results/colvintern_experiments"
+  experiment_name: "colvintern_vietnamese_retrieval"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: true

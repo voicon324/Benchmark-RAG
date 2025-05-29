@@ -1,0 +1,49 @@
+# VietDocVQA OCR Text Retrieval Experiment
+# This configuration tests text retrieval models on Vietnamese document VQA data using OCR text
+
+description: "VietDocVQA OCR Text Retrieval Benchmark"
+
+models:
+  - name: "bm25_baseline"
+    type: "sparse"
+    model_name_or_path: ""  # BM25 doesn't need a pre-trained model path
+    parameters:
+      k1: 1.2
+      b: 0.75
+    device: "cpu"  # BM25 always uses CPU
+
+  - name: "sentence_bert_multilingual"
+    type: "dense" 
+    model_name_or_path: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+    device: "cuda"
+    batch_size: 32
+    max_seq_length: 512
+
+datasets:
+  - name: "vietdocvqa_ocr"
+    type: "text"
+    data_dir: "/home/hkduy/NewAI/new_bench/NewAIBench_VietDocVQAII_with_OCR"
+    max_samples: 2000  # Limit dataset for faster testing
+    config_overrides:
+      corpus_file: "corpus_processed.jsonl"  # Use preprocessed corpus with 'text' field
+      qrels_file: "qrels.jsonl"  # Explicitly specify JSONL format for relevance judgments
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20, 50]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 100
+  save_run_file: true
+  run_file_format: "trec"
+
+output:
+  output_dir: "./results/vietdocvqa_text_experiments"
+  experiment_name: "vietdocvqa_ocr_text_retrieval"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: true

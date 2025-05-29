@@ -515,7 +515,7 @@ class TextDatasetLoader(BaseDatasetLoader):
                     data = json.loads(line.strip())
                     query_id = str(data["query_id"])
                     doc_id = str(data["doc_id"])
-                    score = int(data["score"])
+                    score = int(data["relevance"])
                     qrels[query_id][doc_id] = score
                 except (json.JSONDecodeError, KeyError, ValueError) as e:
                     logger.warning(f"Invalid qrels JSONL entry: {line}")

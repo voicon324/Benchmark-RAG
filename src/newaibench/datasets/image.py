@@ -504,7 +504,7 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
     def _preprocess_image_corpus(self, corpus: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """Apply preprocessing to image corpus."""
         processed_corpus = {}
-        options = self.config.preprocessing_options
+        options = self.config.preprocessing_options or {}
         
         for doc_id, doc in corpus.items():
             # Apply text preprocessing to OCR text
@@ -512,7 +512,7 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
                 doc["text"] = self._apply_preprocessing(doc["text"])
                 
                 # Apply length filtering
-                if options.get("min_length", 1):
+                if options.get("min_length"):
                     if len(doc["text"].split()) < options["min_length"]:
                         continue
                 
@@ -680,7 +680,7 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
                     data = json.loads(line.strip())
                     query_id = str(data["query_id"])
                     doc_id = str(data["doc_id"])
-                    score = int(data["score"])
+                    score = int(data["relevance"])
                     qrels[query_id][doc_id] = score
                 except (json.JSONDecodeError, KeyError, ValueError) as e:
                     logger.warning(f"Invalid qrels JSONL entry: {line}")

@@ -245,6 +245,10 @@ class ImageEmbeddingDocumentRetriever(BaseRetrievalModel):
         self.clip_tokenizer = None
         self.embedding_dim = None
         
+        # Determine model type based on path
+        self.is_sentence_transformer = self.model_name_or_path.startswith('sentence-transformers/') or 'sentence-transformers' in self.model_name_or_path
+        self.sentence_transformer_model = None
+        
         # Storage
         self.doc_embeddings = {}
         self.doc_ids_list = []
@@ -274,21 +278,40 @@ class ImageEmbeddingDocumentRetriever(BaseRetrievalModel):
         try:
             logger.info(f"Loading CLIP model: {self.model_name_or_path}")
             
-            # Load CLIP model components
-            self.clip_model = CLIPModel.from_pretrained(self.model_name_or_path)
-            self.clip_processor = CLIPProcessor.from_pretrained(self.model_name_or_path)
-            self.clip_tokenizer = CLIPTokenizer.from_pretrained(self.model_name_or_path)
-            
-            # Move to device
-            device = self.config.device
-            if device == "auto":
-                device = "cuda" if torch.cuda.is_available() else "cpu"
-            
-            self.clip_model = self.clip_model.to(device)
-            self.clip_model.eval()
-            
-            # Get embedding dimension
-            self.embedding_dim = self.clip_model.config.projection_dim
+            if self.is_sentence_transformer:
+                # Use SentenceTransformer for sentence-transformers models
+                if not SBERT_AVAILABLE:
+                    raise ImportError("sentence-transformers is required for this model")
+                
+                logger.info("Loading as SentenceTransformer model")
+                self.sentence_transformer_model = SentenceTransformer(self.model_name_or_path)
+                
+                # Move to device
+                device = self.config.device
+                if device == "auto":
+                    device = "cuda" if torch.cuda.is_available() else "cpu"
+                
+                self.sentence_transformer_model = self.sentence_transformer_model.to(device)
+                
+                # For sentence-transformers CLIP models, embedding dimension is typically 512
+                self.embedding_dim = 512  # This will be verified during first encoding
+                
+            else:
+                # Use transformers CLIP models for OpenAI and other standard CLIP models
+                self.clip_model = CLIPModel.from_pretrained(self.model_name_or_path)
+                self.clip_processor = CLIPProcessor.from_pretrained(self.model_name_or_path)
+                self.clip_tokenizer = CLIPTokenizer.from_pretrained(self.model_name_or_path)
+                
+                # Move to device
+                device = self.config.device
+                if device == "auto":
+                    device = "cuda" if torch.cuda.is_available() else "cpu"
+                
+                self.clip_model = self.clip_model.to(device)
+                self.clip_model.eval()
+                
+                # Get embedding dimension
+                self.embedding_dim = self.clip_model.config.projection_dim
             
             self.is_loaded = True
             logger.info(f"CLIP model loaded successfully. Embedding dimension: {self.embedding_dim}")
@@ -378,25 +401,44 @@ class ImageEmbeddingDocumentRetriever(BaseRetrievalModel):
             
             # Encode texts
             if texts:
-                with torch.no_grad():
-                    inputs = self.clip_tokenizer(
-                        texts, 
-                        padding=True, 
-                        truncation=True, 
-                        max_length=self.config.max_length,
-                        return_tensors="pt"
-                    ).to(self.clip_model.device)
-                    
-                    text_features = self.clip_model.get_text_features(**inputs)
-                    
-                    # Normalize if requested
-                    if self.normalize_embeddings:
-                        text_features = F.normalize(text_features, p=2, dim=1)
-                    
-                    # Convert to numpy and store
-                    embeddings = text_features.cpu().numpy()
-                    for query_id, embedding in zip(query_ids, embeddings):
-                        query_embeddings[query_id] = embedding
+                if self.is_sentence_transformer:
+                    # Use SentenceTransformer encoding for text
+                    with torch.no_grad():
+                        embeddings = self.sentence_transformer_model.encode(
+                            texts,
+                            batch_size=batch_size,
+                            show_progress_bar=False,
+                            convert_to_numpy=True,
+                            normalize_embeddings=self.normalize_embeddings
+                        )
+                        
+                        # Update embedding dimension if not set
+                        if self.embedding_dim is None:
+                            self.embedding_dim = embeddings.shape[1]
+                        
+                        for query_id, embedding in zip(query_ids, embeddings):
+                            query_embeddings[query_id] = embedding
+                else:
+                    # Use transformers CLIP encoding
+                    with torch.no_grad():
+                        inputs = self.clip_tokenizer(
+                            texts, 
+                            padding=True, 
+                            truncation=True, 
+                            max_length=self.config.max_length,
+                            return_tensors="pt"
+                        ).to(self.clip_model.device)
+                        
+                        text_features = self.clip_model.get_text_features(**inputs)
+                        
+                        # Normalize if requested
+                        if self.normalize_embeddings:
+                            text_features = F.normalize(text_features, p=2, dim=1)
+                        
+                        # Convert to numpy and store
+                        embeddings = text_features.cpu().numpy()
+                        for query_id, embedding in zip(query_ids, embeddings):
+                            query_embeddings[query_id] = embedding
         
         logger.info(f"Encoded {len(query_embeddings)} text queries")
         return query_embeddings
@@ -427,59 +469,110 @@ class ImageEmbeddingDocumentRetriever(BaseRetrievalModel):
         # Process documents in batches
         doc_items = list(corpus.items())
         
+        # Setup progress bar if requested
+        progress_bar = None
         if show_progress:
             try:
                 from tqdm import tqdm
-                doc_items = tqdm(doc_items, desc="Encoding images")
+                total_batches = (len(doc_items) + batch_size - 1) // batch_size
+                progress_bar = tqdm(total=total_batches, desc="Encoding images", unit="batch")
             except ImportError:
                 pass
         
         for i in range(0, len(doc_items), batch_size):
             batch_items = doc_items[i:i+batch_size]
             
-            # Load and preprocess images
-            images = []
-            valid_doc_ids = []
-            
-            for doc_id, doc_data in batch_items:
-                image_path = doc_data.get(self.image_path_field)
+            if self.is_sentence_transformer:
+                # For sentence-transformers, use image paths directly
+                image_paths = []
+                valid_doc_ids = []
                 
-                if not image_path:
-                    logger.warning(f"No image path found for document {doc_id}")
-                    failed_count += 1
-                    continue
+                for doc_id, doc_data in batch_items:
+                    image_path = doc_data.get(self.image_path_field)
+                    
+                    if not image_path:
+                        logger.warning(f"No image path found for document {doc_id}")
+                        failed_count += 1
+                        continue
+                    
+                    # Check if image can be loaded (basic validation)
+                    image = self._load_and_preprocess_image(image_path)
+                    if image is not None:
+                        image_paths.append(image_path)
+                        valid_doc_ids.append(doc_id)
+                    else:
+                        failed_count += 1
                 
-                image = self._load_and_preprocess_image(image_path)
-                if image is not None:
-                    images.append(image)
-                    valid_doc_ids.append(doc_id)
-                else:
-                    failed_count += 1
-            
-            # Encode batch
-            if images:
-                try:
-                    with torch.no_grad():
-                        inputs = self.clip_processor(
-                            images=images,
-                            return_tensors="pt"
-                        ).to(self.clip_model.device)
-                        
-                        image_features = self.clip_model.get_image_features(**inputs)
-                        
-                        # Normalize if requested
-                        if self.normalize_embeddings:
-                            image_features = F.normalize(image_features, p=2, dim=1)
+                # Encode batch with sentence-transformers
+                if image_paths:
+                    try:
+                        # Use sentence-transformers for image encoding
+                        embeddings = self.sentence_transformer_model.encode(
+                            image_paths,
+                            batch_size=len(image_paths),
+                            convert_to_numpy=True,
+                            normalize_embeddings=self.normalize_embeddings,
+                            show_progress_bar=False
+                        )
                         
                         # Store embeddings
-                        embeddings = image_features.cpu().numpy()
                         for doc_id, embedding in zip(valid_doc_ids, embeddings):
                             doc_embeddings[doc_id] = embedding
                             processed_count += 1
+                    except Exception as e:
+                        logger.error(f"Failed to encode image batch with sentence-transformers: {e}")
+                        failed_count += len(image_paths)
+            else:
+                # For transformers CLIP, load PIL Images
+                images = []
+                valid_doc_ids = []
                 
-                except Exception as e:
-                    logger.error(f"Failed to encode image batch: {e}")
-                    failed_count += len(images)
+                for doc_id, doc_data in batch_items:
+                    image_path = doc_data.get(self.image_path_field)
+                    
+                    if not image_path:
+                        logger.warning(f"No image path found for document {doc_id}")
+                        failed_count += 1
+                        continue
+                    
+                    image = self._load_and_preprocess_image(image_path)
+                    if image is not None:
+                        images.append(image)
+                        valid_doc_ids.append(doc_id)
+                    else:
+                        failed_count += 1
+                
+                # Encode batch with transformers CLIP
+                if images:
+                    try:
+                        with torch.no_grad():
+                            inputs = self.clip_processor(
+                                images=images,
+                                return_tensors="pt"
+                            ).to(self.clip_model.device)
+                            
+                            image_features = self.clip_model.get_image_features(**inputs)
+                            
+                            # Normalize if requested
+                            if self.normalize_embeddings:
+                                image_features = F.normalize(image_features, p=2, dim=1)
+                            
+                            # Store embeddings
+                            embeddings = image_features.cpu().numpy()
+                            for doc_id, embedding in zip(valid_doc_ids, embeddings):
+                                doc_embeddings[doc_id] = embedding
+                                processed_count += 1
+                    except Exception as e:
+                        logger.error(f"Failed to encode image batch with transformers CLIP: {e}")
+                        failed_count += len(images)
+            
+            # Update progress bar
+            if progress_bar:
+                progress_bar.update(1)
+        
+        # Close progress bar
+        if progress_bar:
+            progress_bar.close()
         
         logger.info(f"Encoded {processed_count} images, failed: {failed_count}")
         return doc_embeddings
