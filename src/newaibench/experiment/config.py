@@ -93,27 +93,41 @@ class DatasetConfiguration:
     
     def __post_init__(self):
         """Validate configuration after initialization."""
-        valid_types = ['text', 'image']
+        valid_types = ['text', 'image', 'huggingface', 'hf']
         if self.type not in valid_types:
             raise ValueError(f"Invalid dataset type: {self.type}")
         
-        # Only validate path exists if it's not a test path
-        # This allows unit tests to use fake paths
-        if not self.data_dir.startswith(('/path', '/nonexistent', '/valid', '/test')):
-            if not os.path.exists(self.data_dir):
-                raise ValueError(f"Dataset directory does not exist: {self.data_dir}")
+        # Only validate path exists for local dataset types
+        if self.type in ['text', 'image']:
+            # Only validate path exists if it's not a test path
+            # This allows unit tests to use fake paths
+            if not self.data_dir.startswith(('/path', '/nonexistent', '/valid', '/test')):
+                if not os.path.exists(self.data_dir):
+                    raise ValueError(f"Dataset directory does not exist: {self.data_dir}")
+        
+        # For HuggingFace datasets, ensure required config is present
+        if self.type in ['huggingface', 'hf']:
+            if 'hf_dataset_identifier' not in self.config_overrides:
+                raise ValueError("HuggingFace datasets require 'hf_dataset_identifier' in config_overrides")
     
     def validate(self):
         """Validate dataset configuration."""
-        valid_types = ['text', 'image']
+        valid_types = ['text', 'image', 'huggingface', 'hf']
         if self.type not in valid_types:
             raise ValueError(f"Invalid dataset type: {self.type}")
         
-        # Only validate path exists if it's not a test path
-        # This allows unit tests to use fake paths
-        if not self.data_dir.startswith(('/path', '/nonexistent', '/valid', '/test')):
-            if not os.path.exists(self.data_dir):
-                raise ValueError(f"Dataset directory does not exist: {self.data_dir}")
+        # Only validate path exists for local dataset types
+        if self.type in ['text', 'image']:
+            # Only validate path exists if it's not a test path
+            # This allows unit tests to use fake paths
+            if not self.data_dir.startswith(('/path', '/nonexistent', '/valid', '/test')):
+                if not os.path.exists(self.data_dir):
+                    raise ValueError(f"Dataset directory does not exist: {self.data_dir}")
+        
+        # For HuggingFace datasets, ensure required config is present
+        if self.type in ['huggingface', 'hf']:
+            if 'hf_dataset_identifier' not in self.config_overrides:
+                raise ValueError("HuggingFace datasets require 'hf_dataset_identifier' in config_overrides")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert DatasetConfiguration to dictionary."""

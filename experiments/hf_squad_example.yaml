@@ -1,0 +1,48 @@
+name: "HuggingFace SQuAD Example"
+description: "Example experiment using SQuAD dataset from Hugging Face Hub"
+
+datasets:
+  - name: "squad_validation"
+    type: "huggingface"
+    data_dir: "./data/squad_hf"  # Output directory for processed data
+    config_overrides:
+      hf_dataset_identifier: "squad"
+      hf_dataset_split: "validation"
+      hf_corpus_column_mapping:
+        doc_id_col: "id"
+        text_col: "context"
+        title_col: "title"
+      hf_query_column_mapping:
+        query_id_col: "id" 
+        text_col: "question"
+      hf_qrels_column_mapping:
+        query_id_col: "id"
+        doc_id_col: "id"
+        positive_doc_col: "answers"
+      hf_auto_detect_columns: true
+      hf_default_relevance_score: 2
+    max_samples: 100  # Limit for testing
+
+models:
+  - name: "bm25_baseline"
+    type: "bm25"
+    parameters:
+      k1: 1.2
+      b: 0.75
+
+  - name: "dense_retriever"
+    type: "dense"
+    model_name_or_path: "sentence-transformers/all-MiniLM-L6-v2"
+    parameters:
+      model_architecture: "sentence_transformer"
+      normalize_embeddings: true
+      use_ann_index: false
+
+evaluation:
+  metrics: ["ndcg@10", "recall@5", "map"]
+  save_individual_results: true
+
+output:
+  base_dir: "./results/hf_squad_experiment"
+  save_predictions: true
+  save_metrics: true

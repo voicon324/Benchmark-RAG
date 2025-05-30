@@ -6,16 +6,81 @@ for all retrieval models. It enables a unified API for different types of
 retrieval models including sparse, dense, vision-based, and multimodal models.
 """
 
+import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional, Union, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import numpy as np
 from pathlib import Path
-import logging
+from typing import Dict, List, Any, Optional
+import numpy as np
 
-# Setup logging
 logger = logging.getLogger(__name__)
+
+# Helper function to count model parameters
+def count_model_parameters(model) -> Optional[int]:
+    """
+    Count the number of parameters in a model.
+    
+    Args:
+        model: The model object (can be PyTorch model, transformers model, etc.)
+        
+    Returns:
+        Number of parameters if countable, None otherwise
+    """
+    try:
+        # For PyTorch models
+        if hasattr(model, 'parameters'):
+            return sum(p.numel() for p in model.parameters())
+        
+        # For sentence-transformers models
+        if hasattr(model, '_modules') and hasattr(model, 'parameters'):
+            return sum(p.numel() for p in model.parameters())
+            
+        # For transformers models with specific method
+        if hasattr(model, 'num_parameters'):
+            return model.num_parameters()
+            
+        # For models that have a config with num_parameters
+        if hasattr(model, 'config') and hasattr(model.config, 'num_parameters'):
+            return model.config.num_parameters
+            
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to count model parameters: {e}")
+        return None
+
+# Helper function to count model parameters
+def count_model_parameters(model) -> Optional[int]:
+    """
+    Count the number of parameters in a model.
+    
+    Args:
+        model: The model object (can be PyTorch model, transformers model, etc.)
+        
+    Returns:
+        Number of parameters if countable, None otherwise
+    """
+    try:
+        # For PyTorch models
+        if hasattr(model, 'parameters'):
+            return sum(p.numel() for p in model.parameters())
+        
+        # For sentence-transformers models
+        if hasattr(model, '_modules') and hasattr(model, 'parameters'):
+            return sum(p.numel() for p in model.parameters())
+            
+        # For transformers models with specific method
+        if hasattr(model, 'num_parameters'):
+            return model.num_parameters()
+            
+        # For models that have a config with num_parameters
+        if hasattr(model, 'config') and hasattr(model.config, 'num_parameters'):
+            return model.config.num_parameters
+            
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to count model parameters: {e}")
+        return None
 
 
 class ModelType(Enum):

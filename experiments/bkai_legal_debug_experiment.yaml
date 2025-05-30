@@ -2,6 +2,32 @@ description: "BKAI Legal Data Multi-Models Benchmark - Thử nghiệm nhiều m�
 
 models:
 
+  - name: "bm25_default"
+    type: "sparse"
+    model_name_or_path: ""
+    parameters:
+      k1: 1.2
+      b: 0.75
+      tokenizer: "simple"
+      lowercase: true
+      remove_stopwords: false
+    device: "cpu"
+    batch_size: 32
+
+  # 2. BM25 với tham số tối ưu hóa cho tiếng Việt
+  - name: "bm25_vietnamese_optimized"
+    type: "sparse"
+    model_name_or_path: ""
+    parameters:
+      k1: 1.6
+      b: 0.8
+      tokenizer: "simple"
+      lowercase: true
+      remove_stopwords: true
+      min_token_length: 2
+    device: "cpu"
+    batch_size: 32
+
   # 3. Sentence-BERT Multilingual (nhỏ, nhanh)
   - name: "sbert_multilingual_mini"
     type: "dense"
@@ -14,20 +40,70 @@ models:
       faiss_index_factory_string: "IVF100,Flat"
       faiss_nprobe: 10
       faiss_metric_type: "METRIC_INNER_PRODUCT"
+      lowercase: true
+      remove_stopwords: true
     device: "cuda"
     batch_size: 512
     max_seq_length: 512
 
+  # 4. Sentence-BERT Multilingual (lớn hơn, chính xác hơn)
+  - name: "sbert_multilingual_large"
+    type: "dense"
+    model_name_or_path: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+    device: "cuda"
+    batch_size: 128
+    max_seq_length: 512
+
+  # 8. Multilingual E5 model (hiệu suất cao)
+  - name: "e5_multilingual"
+    type: "dense"
+    model_name_or_path: "intfloat/multilingual-e5-small"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+    device: "cuda"
+    batch_size: 128
+    max_seq_length: 512
+
+  # 9. BGE Multilingual model
+  - name: "bge_multilingual"
+    type: "dense"
+    model_name_or_path: "BAAI/bge-m3"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+    device: "cuda"
+    batch_size: 128
+    max_seq_length: 8192
 datasets:
   - name: "new_text_data"
     type: "text"
-    data_dir: "BKAI_law_data/tydiqa_goldp_vietnamese"
+    data_dir: "NewAIBench_VietDocVQAII_with_OCR"
     # max_samples: 1000  # Bỏ comment để test với dataset nhỏ hơn
     config_overrides:
       cache_enabled: true
       validation_enabled: true
+      corpus_file: "corpus_processed.jsonl"
       queries_file: "queries.jsonl"
-      qrels_file: "qrels.txt"
+      qrels_file: "qrels.jsonl"
 
 evaluation:
   metrics: ["ndcg", "map", "recall", "precision", "mrr"]

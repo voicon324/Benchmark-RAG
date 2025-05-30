@@ -274,3 +274,5 @@ test_debug_*.py
 BKAI_law_data/
 docs/
 NewAIBench_VietDocVQAII_with_OCR/
+
+python312_venv/

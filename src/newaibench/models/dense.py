@@ -389,16 +389,20 @@ class DenseTextRetriever(BaseRetrievalModel):
         
         logger.debug(f"Using model architecture: {self.model_architecture}")
         
+        # texts = [''.join(text.split()[:self.max_seq_length]) for text in texts]
+
         if self.model_architecture == 'sentence_transformer':
             # Use sentence-transformers
             logger.debug(f"Using sentence-transformer architecture, encoder_model: {self.encoder_model}")
             if self.encoder_model is None:
                 raise RuntimeError("encoder_model is None - model was not loaded properly")
+            print(f'Max sequence length for encoding: {self.max_seq_length}')
             embeddings = self.encoder_model.encode(
                 texts,
                 batch_size=self.config.batch_size,
                 show_progress_bar=show_progress,
-                convert_to_numpy=True
+                convert_to_numpy=True,
+                max_seq_length=self.max_seq_length
             )
         else:
             # Use transformers model
@@ -998,12 +1002,19 @@ class DenseTextRetriever(BaseRetrievalModel):
         Returns:
             Dictionary with model information
         """
+        from .base import count_model_parameters
+        
+        param_count = None
+        if self.model is not None:
+            param_count = count_model_parameters(self.model)
+            
         return {
             'model_name': self.name,
             'model_type': 'Dense',
             'model_path': self.model_name_or_path,
             'architecture': self.model_architecture,
             'embedding_dim': self.embedding_dim,
+            'parameter_count': param_count,
             'parameters': {
                 'use_ann_index': self.use_ann_index,
                 'ann_backend': self.ann_backend if self.use_ann_index else None,

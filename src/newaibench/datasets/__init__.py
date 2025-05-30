@@ -24,6 +24,10 @@ from .image import (
     DocumentImageDatasetLoader,
     DocumentImageDatasetConfig
 )
+from .hf_loader import (
+    HuggingFaceDatasetLoader,
+    HuggingFaceDatasetConfig
+)
 
 # Public API
 __all__ = [
@@ -38,6 +42,8 @@ __all__ = [
     "TextDatasetLoader",
     "DocumentImageDatasetLoader", 
     "DocumentImageDatasetConfig",
+    "HuggingFaceDatasetLoader",
+    "HuggingFaceDatasetConfig",
     
     # Version
     "__version__"
@@ -48,7 +54,7 @@ def create_dataset_loader(dataset_type: str, config: DatasetConfig) -> BaseDatas
     """Create a dataset loader based on dataset type.
     
     Args:
-        dataset_type: Type of dataset ('text' or 'image')
+        dataset_type: Type of dataset ('text', 'image', or 'huggingface')
         config: Dataset configuration object
         
     Returns:
@@ -76,9 +82,31 @@ def create_dataset_loader(dataset_type: str, config: DatasetConfig) -> BaseDatas
                 metadata=config.metadata
             )
         return DocumentImageDatasetLoader(config)
+    elif dataset_type.lower() in ["huggingface", "hf"]:
+        if not isinstance(config, HuggingFaceDatasetConfig):
+            # Convert base config to HuggingFace config if possible
+            if hasattr(config, 'hf_dataset_identifier'):
+                # Already has HF attributes, just convert type
+                config = HuggingFaceDatasetConfig(
+                    dataset_path=config.dataset_path,
+                    corpus_file=config.corpus_file,
+                    queries_file=config.queries_file,
+                    qrels_file=config.qrels_file,
+                    format_type=config.format_type,
+                    encoding=config.encoding,
+                    preprocessing_options=config.preprocessing_options,
+                    validation_enabled=config.validation_enabled,
+                    cache_enabled=config.cache_enabled,
+                    max_samples=config.max_samples,
+                    metadata=config.metadata,
+                    **{k: v for k, v in config.__dict__.items() if k.startswith('hf_')}
+                )
+            else:
+                raise ValueError("For huggingface loader, config must be HuggingFaceDatasetConfig or have hf_dataset_identifier")
+        return HuggingFaceDatasetLoader(config)
     else:
         raise ValueError(f"Unsupported dataset type: {dataset_type}. "
-                        f"Supported types: 'text', 'image', 'document_image'")
+                        f"Supported types: 'text', 'image', 'document_image', 'huggingface', 'hf'")
 
 # Add factory function to __all__
 __all__.append("create_dataset_loader")

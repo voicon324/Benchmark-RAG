@@ -828,12 +828,19 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
     
     def get_model_info(self) -> Dict[str, Any]:
         """Get model information."""
+        from .base import count_model_parameters
+        
+        param_count = None
+        if hasattr(self, 'model') and self.model is not None:
+            param_count = count_model_parameters(self.model)
+        
         return {
             "model_name": self.name,
             "model_type": "Multimodal",
             "model_path": self.model_name_or_path,
             "architecture": "ColVintern",
             "embedding_dim": self.embedding_dim,
+            "parameter_count": param_count,
             "corpus_indexed": self._corpus_indexed,
             "use_ann_index": self.use_ann_index,
             "ann_backend": self.ann_backend if self.use_ann_index else None,

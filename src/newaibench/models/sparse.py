@@ -316,9 +316,12 @@ class BM25Model(BaseRetrievalModel):
         Returns:
             Dictionary with model information
         """
+        # For sparse models like BM25, parameter count is not applicable
+        # since they don't have neural network parameters
         return {
             'model_name': self.name,
             'model_type': 'BM25',
+            'parameter_count': None,  # N/A for sparse models
             'parameters': {
                 'k1': self.k1,
                 'b': self.b,

@@ -225,6 +225,15 @@ class ExperimentRunner:
                 )
                 loader = create_dataset_loader('image', config)
                 
+            elif dataset_config.type in ['huggingface', 'hf']:
+                from newaibench.datasets import HuggingFaceDatasetConfig
+                config = HuggingFaceDatasetConfig(
+                    dataset_path=dataset_config.data_dir,
+                    max_samples=dataset_config.max_samples,
+                    **dataset_config.config_overrides
+                )
+                loader = create_dataset_loader('huggingface', config)
+                
             else:
                 raise ValueError(f"Unknown dataset type: {dataset_config.type}")
             
@@ -416,6 +425,9 @@ class ExperimentRunner:
             
             execution_time = time.time() - experiment_start
             
+            # Get model information including parameter count
+            model_info = model.get_model_info() if hasattr(model, 'get_model_info') else {}
+            
             # Create result
             result = ExperimentResult(
                 model_name=model_config.name,
@@ -428,7 +440,8 @@ class ExperimentRunner:
                     'dataset_type': dataset_config.type,
                     'num_documents': len(corpus),
                     'num_queries': len(queries),
-                    'num_qrels': len(qrels)
+                    'num_qrels': len(qrels),
+                    'model_info': model_info  # Include complete model information
                 },
                 success=True
             )
