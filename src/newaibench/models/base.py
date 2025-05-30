@@ -17,36 +17,77 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # Helper function to count model parameters
-def count_model_parameters(model) -> Optional[int]:
+def count_model_parameters(model_obj) -> Optional[int]:
     """
     Count the number of parameters in a model.
     
     Args:
-        model: The model object (can be PyTorch model, transformers model, etc.)
+        model_obj: The model object (can be PyTorch model, transformers model, etc.)
         
     Returns:
         Number of parameters if countable, None otherwise
     """
     try:
         # For PyTorch models
-        if hasattr(model, 'parameters'):
-            return sum(p.numel() for p in model.parameters())
+        if hasattr(model_obj, 'parameters'):
+            return sum(p.numel() for p in model_obj.parameters())
         
         # For sentence-transformers models
-        if hasattr(model, '_modules') and hasattr(model, 'parameters'):
-            return sum(p.numel() for p in model.parameters())
+        if hasattr(model_obj, '_modules') and hasattr(model_obj, 'parameters'):
+            return sum(p.numel() for p in model_obj.parameters())
             
         # For transformers models with specific method
-        if hasattr(model, 'num_parameters'):
-            return model.num_parameters()
+        if hasattr(model_obj, 'num_parameters'):
+            return model_obj.num_parameters()
             
         # For models that have a config with num_parameters
-        if hasattr(model, 'config') and hasattr(model.config, 'num_parameters'):
-            return model.config.num_parameters
+        if hasattr(model_obj, 'config') and hasattr(model_obj.config, 'num_parameters'):
+            return model_obj.config.num_parameters
             
         return None
     except Exception as e:
         logger.warning(f"Failed to count model parameters: {e}")
+        return None
+
+def get_model_parameter_count(retrieval_model) -> Optional[int]:
+    """
+    Get parameter count for a retrieval model by checking different model storage patterns.
+    
+    Args:
+        retrieval_model: A retrieval model instance (DenseTextRetriever, BM25Model, etc.)
+        
+    Returns:
+        Number of parameters if countable, None otherwise
+    """
+    try:
+        # For DenseTextRetriever models
+        if hasattr(retrieval_model, 'encoder_model') and retrieval_model.encoder_model is not None:
+            return count_model_parameters(retrieval_model.encoder_model)
+        
+        # For DPR dual-encoder models
+        if hasattr(retrieval_model, 'query_encoder') and hasattr(retrieval_model, 'doc_encoder'):
+            query_params = count_model_parameters(retrieval_model.query_encoder) or 0
+            doc_params = count_model_parameters(retrieval_model.doc_encoder) or 0
+            if query_params > 0 or doc_params > 0:
+                return query_params + doc_params
+        
+        # For ColVintern/ColPali models
+        if hasattr(retrieval_model, 'model') and retrieval_model.model is not None:
+            return count_model_parameters(retrieval_model.model)
+        
+        # For models that store the model in a different attribute
+        if hasattr(retrieval_model, 'processor') and retrieval_model.processor is not None:
+            return count_model_parameters(retrieval_model.processor)
+        
+        # For sparse models like BM25 (no neural parameters)
+        if hasattr(retrieval_model, 'model_type') and 'BM25' in str(retrieval_model.model_type):
+            return 0  # BM25 has no trainable parameters
+        
+        # Try direct parameter counting on the retrieval model itself
+        return count_model_parameters(retrieval_model)
+        
+    except Exception as e:
+        logger.warning(f"Failed to get parameter count for retrieval model: {e}")
         return None
 
 # Helper function to count model parameters

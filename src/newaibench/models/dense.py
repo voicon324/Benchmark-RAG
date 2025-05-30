@@ -1002,11 +1002,9 @@ class DenseTextRetriever(BaseRetrievalModel):
         Returns:
             Dictionary with model information
         """
-        from .base import count_model_parameters
+        from .base import get_model_parameter_count
         
-        param_count = None
-        if self.model is not None:
-            param_count = count_model_parameters(self.model)
+        param_count = get_model_parameter_count(self)
             
         return {
             'model_name': self.name,
