@@ -153,9 +153,6 @@ class TextDatasetLoader(BaseDatasetLoader):
                 queries = dict(query_items)
                 logger.info(f"Limited queries to {len(queries)} samples")
             
-            query_items = list(queries.items())[:10]
-            queries = dict(query_items)
-            
             # Cache if enabled
             if self.config.cache_enabled:
                 self._queries = queries

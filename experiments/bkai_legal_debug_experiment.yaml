@@ -1,0 +1,47 @@
+description: "BKAI Legal Data Multi-Models Benchmark - Thử nghiệm nhiều mô hình retrieval khác nhau"
+
+models:
+
+  # 3. Sentence-BERT Multilingual (nhỏ, nhanh)
+  - name: "sbert_multilingual_mini"
+    type: "dense"
+    model_name_or_path: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+    device: "cuda"
+    batch_size: 512
+    max_seq_length: 512
+
+datasets:
+  - name: "new_text_data"
+    type: "text"
+    data_dir: "BKAI_law_data/tydiqa_goldp_vietnamese"
+    # max_samples: 1000  # Bỏ comment để test với dataset nhỏ hơn
+    config_overrides:
+      cache_enabled: true
+      validation_enabled: true
+      queries_file: "queries.jsonl"
+      qrels_file: "qrels.txt"
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20, 100]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 100
+  save_run_file: true
+  run_file_format: "trec"
+
+output:
+  output_dir: "./results/bkai_legal_multi_models_experiments"
+  experiment_name: "bkai_legal_multi_models_retrieval"
+  save_models: false
+  save_intermediate: true
+  log_level: "DEBUG"
+  overwrite: true
