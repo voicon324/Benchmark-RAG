@@ -1,0 +1,185 @@
+# BKAI Legal Data Multi-Models Experiment - Tối ưu cho Tiếng Việt
+# Experiment với nhiều mô hình text retrieval tối ưu cho dữ liệu pháp luật tiếng Việt
+# Bao gồm BM25, Dense models, FAISS integration và các mô hình chuyên biệt cho tiếng Việt
+
+description: "BKAI Legal Data Multi-Models Benchmark - Thử nghiệm các mô hình text retrieval tối ưu cho tiếng Việt"I Legal Data Multi-Models Experiment
+# Experiment với nhiều mô hình text khác nhau cho dữ liệu pháp luật BKAI
+# Bao gồm BM25, Dense models, và FAISS integration
+
+description: "BKAI Legal Data Multi-Models Benchmark - Thử nghiệm nhiều mô hình text retrieval khác nhau"
+
+models:
+  # 1. BM25 Baseline - Traditional sparse retrieval
+  - name: "bm25_default"
+    type: "sparse"
+    model_name_or_path: ""
+    parameters:
+      k1: 1.2
+      b: 0.75
+      tokenizer: "simple"
+      lowercase: true
+      remove_stopwords: false
+    device: "cpu"
+    batch_size: 32
+
+  # 2. BM25 tối ưu hóa cho tiếng Việt với stopwords và tokenization
+  - name: "bm25_vietnamese_optimized"
+    type: "sparse"
+    model_name_or_path: ""
+    parameters:
+      k1: 1.8  # Tăng k1 cho văn bản pháp luật dài
+      b: 0.85  # Tăng b để tính đến độ dài document
+      tokenizer: "simple"
+      lowercase: true
+      remove_stopwords: true
+      min_token_length: 2  # Phù hợp với tiếng Việt
+      stopwords: ["của", "và", "trong", "với", "cho", "từ", "được", "có", "là", "để", "theo", "về", "tại", "trên", "này", "đó", "các", "những", "một", "hai", "ba"]
+    device: "cpu"
+    batch_size: 32
+
+  # 3. PhoBERT Base - Mô hình BERT chuyên cho tiếng Việt
+  - name: "phobert_base"
+    type: "dense"
+    model_name_or_path: "vinai/phobert-base"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "transformers"
+      pooling_strategy: "mean"
+      add_special_tokens: true
+    device: "cuda"
+    batch_size: 64
+    max_seq_length: 256
+
+  # 4. PhoBERT Large - Mô hình BERT lớn hơn cho tiếng Việt
+  - name: "phobert_large"
+    type: "dense"
+    model_name_or_path: "vinai/phobert-large"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "transformers"
+      pooling_strategy: "mean"
+      add_special_tokens: true
+    device: "cuda"
+    batch_size: 32
+    max_seq_length: 256
+
+  # 5. Sentence-BERT Multilingual (tối ưu cho đa ngôn ngữ bao gồm tiếng Việt)
+  - name: "sbert_multilingual_mini"
+    type: "dense"
+    model_name_or_path: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+    device: "cuda"
+    batch_size: 128
+    max_seq_length: 512
+
+  # 6. Sentence-BERT Multilingual MPNet (chất lượng cao hơn)
+  - name: "sbert_multilingual_mpnet"
+    type: "dense"
+    model_name_or_path: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+    device: "cuda"
+    batch_size: 64
+    max_seq_length: 512
+
+  # 7. Multilingual E5 Small - Hiệu suất tốt cho tiếng Việt
+  - name: "e5_multilingual_small"
+    type: "dense"
+    model_name_or_path: "intfloat/multilingual-e5-small"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      query_prefix: "query: "
+      document_prefix: "passage: "
+    device: "cuda"
+    batch_size: 96
+    max_seq_length: 512
+
+  # 8. Multilingual E5 Base - Chất lượng cao hơn
+  - name: "e5_multilingual_base"
+    type: "dense"
+    model_name_or_path: "intfloat/multilingual-e5-base"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      query_prefix: "query: "
+      document_prefix: "passage: "
+    device: "cuda"
+    batch_size: 48
+    max_seq_length: 512
+
+  # 9. BGE-M3 - Multilingual model mạnh mẽ
+  - name: "bge_m3_multilingual"
+    type: "dense"
+    model_name_or_path: "BAAI/bge-m3"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+    device: "cuda"
+    batch_size: 24
+    max_seq_length: 8192
+
+  # 10. PhoBERT với FAISS Flat Index (exact search)
+  - name: "phobert_faiss_flat"
+    type: "dense"
+    model_name_or_path: "vinai/phobert-base"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "transformers"
+      pooling_strategy: "mean"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "Flat"
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+    device: "cuda"
+    batch_size: 64
+    max_seq_length: 256
+
+  # 11. E5 Multilingual với FAISS IVF Index (approximate search)
+  - name: "e5_faiss_ivf"
+    type: "dense"
+    model_name_or_path: "intfloat/multilingual-e5-small"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      query_prefix: "query: "
+      document_prefix: "passage: "
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+    device: "cuda"
+    batch_size: 96
+    max_seq_length: 512
+
+datasets:
+  - name: "bkai_legal_data"
+    type: "text"
+    data_dir: "/home/hkduy/NewAI/new_bench/BKAI_law_data/newaibench_formatted_data/legal_data"
+    # max_samples: 2000  # Bỏ comment để test với dataset nhỏ hơn
+    config_overrides:
+      cache_enabled: true
+      validation_enabled: true
+      queries_file: "train_queries.jsonl"
+      qrels_file: "train_qrels.txt"
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20, 100]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 100
+  save_run_file: true
+  run_file_format: "trec"
+
+output:
+  output_dir: "./results/bkai_legal_vietnamese_optimized_experiments"
+  experiment_name: "bkai_legal_vietnamese_models_retrieval"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: true
