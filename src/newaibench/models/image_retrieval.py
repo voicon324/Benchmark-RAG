@@ -238,6 +238,7 @@ class ImageEmbeddingDocumentRetriever(BaseRetrievalModel):
         self.use_ann_index = params.get('use_ann_index', False)
         self.ann_backend = params.get('ann_backend', 'faiss')
         self.normalize_embeddings = params.get('normalize_embeddings', True)
+        self.trust_remote_code = params.get('trust_remote_code', False)
         
         # Model components (initialized in load_model)
         self.clip_model = None
@@ -284,7 +285,10 @@ class ImageEmbeddingDocumentRetriever(BaseRetrievalModel):
                     raise ImportError("sentence-transformers is required for this model")
                 
                 logger.info("Loading as SentenceTransformer model")
-                self.sentence_transformer_model = SentenceTransformer(self.model_name_or_path)
+                self.sentence_transformer_model = SentenceTransformer(
+                    self.model_name_or_path,
+                    trust_remote_code=self.trust_remote_code
+                )
                 
                 # Move to device
                 device = self.config.device

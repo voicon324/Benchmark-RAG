@@ -74,7 +74,8 @@ class DenseTextRetriever(BaseRetrievalModel):
         ...     "parameters": {
         ...         "use_ann_index": True,
         ...         "ann_backend": "faiss",
-        ...         "normalize_embeddings": True
+        ...         "normalize_embeddings": True,
+        ...         "trust_remote_code": False
         ...     }
         ... }
         >>> model = DenseTextRetriever(config)
@@ -99,6 +100,7 @@ class DenseTextRetriever(BaseRetrievalModel):
                 - max_seq_length (int): Maximum sequence length (default: 512)
                 - pooling_strategy (str): Pooling strategy for transformers models
                     ('cls', 'mean', 'max') (default: 'mean')
+                - trust_remote_code (bool): Whether to trust remote code for custom models (default: False)
             **kwargs: Additional arguments
         """
         super().__init__(model_config, **kwargs)
@@ -113,6 +115,7 @@ class DenseTextRetriever(BaseRetrievalModel):
         self.embedding_dim = params.get('embedding_dim', None)
         self.max_seq_length = params.get('max_seq_length', 512)
         self.pooling_strategy = params.get('pooling_strategy', 'mean')
+        self.trust_remote_code = params.get('trust_remote_code', False)
         
         # ANN index parameters
         self.faiss_index_factory = params.get('faiss_index_factory_string', 'Flat')
@@ -158,7 +161,8 @@ class DenseTextRetriever(BaseRetrievalModel):
                 # Use sentence-transformers library
                 self.encoder_model = SentenceTransformer(
                     self.model_name_or_path,
-                    device=self.config.device
+                    device=self.config.device,
+                    trust_remote_code=self.trust_remote_code
                 )
                 
                 # Set max sequence length
@@ -168,7 +172,7 @@ class DenseTextRetriever(BaseRetrievalModel):
                 if self.embedding_dim is None:
                     self.embedding_dim = self.encoder_model.get_sentence_embedding_dimension()
                 
-                logger.info(f"Loaded Sentence-BERT model: {self.model_name_or_path}")
+                logger.info(f"Loaded Sentence-BERT model: {self.model_name_or_path} (trust_remote_code={self.trust_remote_code})")
                 
             elif self.model_architecture == 'dpr':
                 # DPR dual-encoder model
@@ -219,7 +223,8 @@ class DenseTextRetriever(BaseRetrievalModel):
                 # Default to sentence-transformers
                 self.encoder_model = SentenceTransformer(
                     self.model_name_or_path,
-                    device=self.config.device
+                    device=self.config.device,
+                    trust_remote_code=self.trust_remote_code
                 )
                 self.encoder_model.max_seq_length = self.max_seq_length
                 
@@ -230,7 +235,7 @@ class DenseTextRetriever(BaseRetrievalModel):
                 if self.embedding_dim is None:
                     self.embedding_dim = self.encoder_model.get_sentence_embedding_dimension()
                 
-                logger.info(f"Loaded default Sentence-BERT model: {self.model_name_or_path}")
+                logger.info(f"Loaded default Sentence-BERT model: {self.model_name_or_path} (trust_remote_code={self.trust_remote_code})")
             
             # Set up embedding cache path
             if self.config.cache_dir:

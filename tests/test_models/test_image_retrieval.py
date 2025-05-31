@@ -185,6 +185,24 @@ class TestImageEmbeddingDocumentRetriever:
         }
     
     @pytest.fixture
+    def trust_remote_code_config(self):
+        """Sample configuration with trust_remote_code enabled."""
+        return {
+            "model_name": "custom/clip-model-with-remote-code",
+            "model_type": ModelType.MULTIMODAL,
+            "embedding_dim": 512,
+            "batch_size": 16,
+            "normalize_embeddings": True,
+            "enable_ann_indexing": True,
+            "ann_index_type": "faiss",
+            "trust_remote_code": True,
+            "image_preprocessing": {
+                "resize": [224, 224],
+                "normalize": True
+            }
+        }
+    
+    @pytest.fixture
     def sample_corpus(self):
         """Sample corpus with image paths."""
         return [
@@ -325,6 +343,41 @@ class TestImageEmbeddingDocumentRetriever:
         assert len(results[0]) == 2
         assert all("score" in result for result in results[0])
         assert all("id" in result for result in results[0])
+    
+    def test_init_trust_remote_code(self, trust_remote_code_config):
+        """Test initialization with trust_remote_code enabled."""
+        retriever = ImageEmbeddingDocumentRetriever(trust_remote_code_config)
+        
+        assert retriever.model_config == trust_remote_code_config
+        assert retriever.trust_remote_code is True
+        assert retriever.image_preprocessing == {
+            "resize": [224, 224],
+            "normalize": True
+        }
+    
+    def test_init_trust_remote_code_default(self, sample_config):
+        """Test that trust_remote_code defaults to False."""
+        retriever = ImageEmbeddingDocumentRetriever(sample_config)
+        
+        assert retriever.trust_remote_code is False
+    
+    @patch('newaibench.models.image_retrieval.SentenceTransformer')
+    def test_load_model_with_trust_remote_code(self, mock_sbert, trust_remote_code_config):
+        """Test SentenceTransformer loading with trust_remote_code=True."""
+        # Setup mock
+        mock_model = Mock()
+        mock_model.get_sentence_embedding_dimension.return_value = 768
+        mock_sbert.return_value = mock_model
+        
+        retriever = ImageEmbeddingDocumentRetriever(trust_remote_code_config)
+        retriever.load_model()
+        
+        assert retriever.is_loaded is True
+        # Verify trust_remote_code is passed to SentenceTransformer
+        mock_sbert.assert_called_once_with(
+            "custom/clip-model-with-remote-code", 
+            trust_remote_code=True
+        )
 
 
 class TestMultimodalDocumentRetriever:
