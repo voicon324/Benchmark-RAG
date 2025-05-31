@@ -428,7 +428,7 @@ class DenseTextRetriever(BaseRetrievalModel):
             elif not is_query and self.document_encode_params:
                 encode_kwargs.update(self.document_encode_params)
                 logger.debug(f"Using document encode params: {self.document_encode_params}")
-            print(f"Encoding texts with parameters: {encode_kwargs}")
+            
             # Add any additional parameters passed in
             if additional_encode_params:
                 encode_kwargs.update(additional_encode_params)
