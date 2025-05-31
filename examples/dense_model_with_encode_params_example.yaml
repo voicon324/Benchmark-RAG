@@ -1,0 +1,81 @@
+# Example configuration showing how to use encode parameters for sentence-transformers models
+# This demonstrates different ways to configure encoding parameters for queries and documents
+
+name: "dense_model_with_encode_params_example"
+description: "Example showing how to use additional encoding parameters"
+
+models:
+  # Example 1: Basic model without encode parameters (default behavior)
+  - name: "basic_sbert"
+    type: "dense"
+    model_name_or_path: "all-MiniLM-L6-v2"
+    parameters:
+      use_ann_index: false
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      max_seq_length: 512
+
+  # Example 2: Model with task-specific encoding parameters
+  - name: "sbert_with_task_params"
+    type: "dense"
+    model_name_or_path: "all-MiniLM-L6-v2"
+    parameters:
+      use_ann_index: false
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      max_seq_length: 512
+      # Query encoding parameters
+      query_encode_params:
+        task: "retrieval.query"
+        prompt_name: "retrieval.query"
+      # Document encoding parameters  
+      document_encode_params:
+        task: "retrieval.passage"
+        prompt_name: "retrieval.passage"
+
+  # Example 3: Model with more advanced encoding parameters
+  - name: "advanced_sbert_with_params"
+    type: "dense"
+    model_name_or_path: "sentence-transformers/all-mpnet-base-v2"
+    parameters:
+      use_ann_index: true
+      ann_backend: "faiss"
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      max_seq_length: 384
+      # Query encoding with custom parameters
+      query_encode_params:
+        task: "search_query"
+        prompt_name: "search"
+        instruction: "Represent this query for semantic search:"
+      # Document encoding with different parameters
+      document_encode_params:
+        task: "search_document"
+        prompt_name: "document"
+        instruction: "Represent this document for semantic search:"
+
+  # Example 4: Multilingual model with language-specific parameters
+  - name: "multilingual_sbert"
+    type: "dense" 
+    model_name_or_path: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    parameters:
+      use_ann_index: false
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      max_seq_length: 256
+      # Vietnamese-specific encoding parameters
+      query_encode_params:
+        task: "retrieval.query.vi"
+        language: "vi"
+      document_encode_params:
+        task: "retrieval.passage.vi"
+        language: "vi"
+
+dataset:
+  name: "example_dataset"
+  path: "path/to/dataset"
+  
+experiment:
+  top_k: [1, 5, 10]
+  metrics: ["ndcg@k", "recall@k", "map@k"]
+  batch_size: 32

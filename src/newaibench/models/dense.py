@@ -101,6 +101,10 @@ class DenseTextRetriever(BaseRetrievalModel):
                 - pooling_strategy (str): Pooling strategy for transformers models
                     ('cls', 'mean', 'max') (default: 'mean')
                 - trust_remote_code (bool): Whether to trust remote code for custom models (default: False)
+                - query_encode_params (dict): Additional parameters for query encoding with sentence-transformers
+                    (e.g., {"task": "retrieval.query", "prompt_name": "query"})
+                - document_encode_params (dict): Additional parameters for document encoding with sentence-transformers
+                    (e.g., {"task": "retrieval.passage", "prompt_name": "passage"})
             **kwargs: Additional arguments
         """
         super().__init__(model_config, **kwargs)
@@ -116,6 +120,10 @@ class DenseTextRetriever(BaseRetrievalModel):
         self.max_seq_length = params.get('max_seq_length', 512)
         self.pooling_strategy = params.get('pooling_strategy', 'mean')
         self.trust_remote_code = params.get('trust_remote_code', False)
+        
+        # Encoding parameters for sentence-transformers
+        self.query_encode_params = params.get('query_encode_params', {})
+        self.document_encode_params = params.get('document_encode_params', {})
         
         # ANN index parameters
         self.faiss_index_factory = params.get('faiss_index_factory_string', 'Flat')
@@ -377,7 +385,8 @@ class DenseTextRetriever(BaseRetrievalModel):
     def encode_texts(self, 
                     texts: List[str], 
                     is_query: bool = False,
-                    show_progress: bool = False) -> np.ndarray:
+                    show_progress: bool = False,
+                    additional_encode_params: Optional[Dict[str, Any]] = None) -> np.ndarray:
         """
         Encode a list of texts into embeddings.
         
@@ -385,6 +394,7 @@ class DenseTextRetriever(BaseRetrievalModel):
             texts: List of texts to encode
             is_query: Whether these are queries (affects encoder choice for dual-encoder)
             show_progress: Whether to show progress bar
+            additional_encode_params: Additional parameters to pass to the encode method
             
         Returns:
             Numpy array of embeddings with shape (len(texts), embedding_dim)
@@ -402,13 +412,29 @@ class DenseTextRetriever(BaseRetrievalModel):
             if self.encoder_model is None:
                 raise RuntimeError("encoder_model is None - model was not loaded properly")
             print(f'Max sequence length for encoding: {self.max_seq_length}')
-            embeddings = self.encoder_model.encode(
-                texts,
-                batch_size=self.config.batch_size,
-                show_progress_bar=show_progress,
-                convert_to_numpy=True,
-                max_seq_length=self.max_seq_length
-            )
+            
+            # Prepare base encode parameters
+            encode_kwargs = {
+                'batch_size': self.config.batch_size,
+                'show_progress_bar': show_progress,
+                'convert_to_numpy': True,
+                'max_seq_length': self.max_seq_length
+            }
+            
+            # Add context-specific encoding parameters
+            if is_query and self.query_encode_params:
+                encode_kwargs.update(self.query_encode_params)
+                logger.debug(f"Using query encode params: {self.query_encode_params}")
+            elif not is_query and self.document_encode_params:
+                encode_kwargs.update(self.document_encode_params)
+                logger.debug(f"Using document encode params: {self.document_encode_params}")
+            
+            # Add any additional parameters passed in
+            if additional_encode_params:
+                encode_kwargs.update(additional_encode_params)
+                logger.debug(f"Using additional encode params: {additional_encode_params}")
+            
+            embeddings = self.encoder_model.encode(texts, **encode_kwargs)
         else:
             # Use transformers model
             embeddings = self._encode_texts_transformers(texts, is_query=is_query)
@@ -452,7 +478,13 @@ class DenseTextRetriever(BaseRetrievalModel):
             query_ids.append(query_id)
         
         # Encode all queries
-        embeddings = self.encode_texts(query_texts, is_query=True, show_progress=show_progress)
+        additional_params = kwargs.get('additional_encode_params', None)
+        embeddings = self.encode_texts(
+            query_texts, 
+            is_query=True, 
+            show_progress=show_progress,
+            additional_encode_params=additional_params
+        )
         
         # Create mapping
         return {query_id: emb for query_id, emb in zip(query_ids, embeddings)}
@@ -498,7 +530,13 @@ class DenseTextRetriever(BaseRetrievalModel):
             doc_ids.append(doc_id)
         
         # Encode all documents
-        embeddings = self.encode_texts(doc_texts, is_query=False, show_progress=show_progress)
+        additional_params = kwargs.get('additional_encode_params', None)
+        embeddings = self.encode_texts(
+            doc_texts, 
+            is_query=False, 
+            show_progress=show_progress,
+            additional_encode_params=additional_params
+        )
         
         # Create mapping
         return {doc_id: emb for doc_id, emb in zip(doc_ids, embeddings)}
