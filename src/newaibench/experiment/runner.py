@@ -39,6 +39,8 @@ class ExperimentResult:
         metrics: Computed evaluation metrics
         run_file_path: Path to saved run file
         execution_time: Time taken for the experiment
+        index_time: Time taken to index the corpus
+        retrieval_time: Time taken for actual retrieval (excluding indexing)
         metadata: Additional metadata about the experiment
         error: Error message if experiment failed
         success: Whether the experiment completed successfully
@@ -48,6 +50,8 @@ class ExperimentResult:
     metrics: Dict[str, float]
     run_file_path: Optional[str] = None
     execution_time: float = 0.0
+    index_time: float = 0.0
+    retrieval_time: float = 0.0
     metadata: Dict[str, Any] = None
     error: Optional[str] = None
     success: bool = True
@@ -261,7 +265,7 @@ class ExperimentRunner:
         except Exception as e:
             raise ExperimentError(f"Failed to load dataset '{dataset_config.name}': {str(e)}")
     
-    def _run_retrieval(self, model: BaseRetrievalModel, corpus, queries, top_k: int) -> Dict[str, Dict[str, float]]:
+    def _run_retrieval(self, model: BaseRetrievalModel, corpus, queries, top_k: int) -> Tuple[Dict[str, Dict[str, float]], float, float]:
         """Run retrieval with the given model.
         
         Args:
@@ -271,7 +275,7 @@ class ExperimentRunner:
             top_k: Number of top documents to retrieve
             
         Returns:
-            Retrieval results in format {query_id: {doc_id: score}}
+            Tuple of (retrieval_results, index_time, retrieval_time)
             
         Raises:
             ExperimentError: If retrieval fails
@@ -285,6 +289,7 @@ class ExperimentRunner:
                 model.load_model()
 
             # Index corpus if needed
+            index_time = 0.0
             if hasattr(model, 'index_corpus') and callable(model.index_corpus):
                 self.logger.info("Indexing corpus...")
                 index_start = time.time()
@@ -303,13 +308,15 @@ class ExperimentRunner:
             else:
                 queries_list = queries  # Already in correct format
             
-            # Run predictions
+            # Run predictions (time actual retrieval separately)
+            retrieval_start = time.time()
             results = model.predict(queries_list, corpus, top_k=top_k)
+            retrieval_time = time.time() - retrieval_start
             
-            retrieval_time = time.time() - start_time
-            self.logger.info(f"Retrieval completed in {retrieval_time:.2f}s")
+            total_time = time.time() - start_time
+            self.logger.info(f"Retrieval completed in {total_time:.2f}s (index: {index_time:.2f}s, retrieval: {retrieval_time:.2f}s)")
             
-            return results
+            return results, index_time, retrieval_time
             
         except Exception as e:
             raise ExperimentError(f"Retrieval failed: {str(e)}")
@@ -413,7 +420,7 @@ class ExperimentRunner:
             model = self._create_model(model_config)
             
             # Run retrieval
-            results = self._run_retrieval(model, corpus, queries, self.config.evaluation.top_k)
+            results, index_time, retrieval_time = self._run_retrieval(model, corpus, queries, self.config.evaluation.top_k)
             
             # Save run file if requested
             run_file_path = None
@@ -435,13 +442,21 @@ class ExperimentRunner:
                 metrics=metrics,
                 run_file_path=run_file_path,
                 execution_time=execution_time,
+                index_time=index_time,
+                retrieval_time=retrieval_time,
                 metadata={
                     'model_type': model_config.type,
                     'dataset_type': dataset_config.type,
                     'num_documents': len(corpus),
                     'num_queries': len(queries),
                     'num_qrels': len(qrels),
-                    'model_info': model_info  # Include complete model information
+                    'model_info': model_info,  # Include complete model information
+                    'timing_breakdown': {
+                        'total_execution_time': execution_time,
+                        'index_time': index_time,
+                        'retrieval_time': retrieval_time,
+                        'evaluation_time': execution_time - index_time - retrieval_time
+                    }
                 },
                 success=True
             )
@@ -460,6 +475,8 @@ class ExperimentRunner:
                 dataset_name=dataset_config.name,
                 metrics={},
                 execution_time=execution_time,
+                index_time=0.0,  # Failed before indexing
+                retrieval_time=0.0,  # Failed before retrieval
                 error=error_msg,
                 success=False
             )
@@ -537,6 +554,16 @@ class ExperimentRunner:
         }
         
         if successful_results:
+            # Add timing statistics
+            summary['timing_statistics'] = {
+                'total_index_time': sum(r.index_time for r in successful_results),
+                'total_retrieval_time': sum(r.retrieval_time for r in successful_results),
+                'average_index_time': sum(r.index_time for r in successful_results) / len(successful_results),
+                'average_retrieval_time': sum(r.retrieval_time for r in successful_results) / len(successful_results),
+                'index_time_per_experiment': [r.index_time for r in successful_results],
+                'retrieval_time_per_experiment': [r.retrieval_time for r in successful_results],
+            }
+            
             # Aggregate metrics across successful experiments
             all_metrics = {}
             for result in successful_results:
@@ -574,6 +601,15 @@ class ExperimentRunner:
         self.logger.info(f"Failed: {summary['failed_experiments']}")
         self.logger.info(f"Total execution time: {summary['total_execution_time']:.2f}s")
         self.logger.info(f"Average execution time: {summary['average_execution_time']:.2f}s")
+        
+        # Log timing statistics
+        if 'timing_statistics' in summary:
+            timing = summary['timing_statistics']
+            self.logger.info("\nTiming breakdown:")
+            self.logger.info(f"  Total index time: {timing['total_index_time']:.2f}s")
+            self.logger.info(f"  Total retrieval time: {timing['total_retrieval_time']:.2f}s")
+            self.logger.info(f"  Average index time: {timing['average_index_time']:.2f}s")
+            self.logger.info(f"  Average retrieval time: {timing['average_retrieval_time']:.2f}s")
         
         if 'average_metrics' in summary:
             self.logger.info("\nAverage metrics across all successful experiments:")
