@@ -154,21 +154,12 @@ class IRMetrics:
         IRMetrics._validate_inputs(qrels, results, k)
         
         ndcg_scores = {}
-        valid_queries = []
         
-        for query_id in qrels.keys():
-            if query_id not in results:
-                continue
-                
+        # Base calculation on queries that have results
+        for query_id in results.keys():
             # Get all relevance scores for this query to compute IDCG
-            all_relevance_scores = list(qrels[query_id].values())
+            all_relevance_scores = list(qrels.get(query_id, {}).values())
             
-            # Skip queries with no relevant documents
-            if not any(score > 0 for score in all_relevance_scores):
-                if per_query:
-                    ndcg_scores[query_id] = 0.0
-                continue
-                
             # Get ranked document IDs from results
             result_items = list(results[query_id].items())
             # Ensure results are sorted by score descending
@@ -187,20 +178,18 @@ class IRMetrics:
             # Compute nDCG@k
             if idcg > 0:
                 ndcg = dcg / idcg
-                valid_queries.append(query_id)
             else:
                 ndcg = 0.0
                 
-            if per_query:
-                ndcg_scores[query_id] = ndcg
+            ndcg_scores[query_id] = ndcg
         
-        # Compute mean nDCG@k across valid queries
-        if valid_queries:
+        # Compute mean nDCG@k across all queries with results
+        if ndcg_scores:
             if per_query:
-                mean_ndcg = sum(ndcg_scores[qid] for qid in valid_queries) / len(valid_queries)
+                mean_ndcg = sum(ndcg_scores.values()) / len(ndcg_scores)
                 return mean_ndcg, ndcg_scores
             else:
-                mean_ndcg = sum(ndcg_scores.get(qid, 0.0) for qid in valid_queries) / len(valid_queries)
+                mean_ndcg = sum(ndcg_scores.values()) / len(ndcg_scores)
                 return mean_ndcg
         else:
             if per_query:
@@ -232,13 +221,10 @@ class IRMetrics:
         IRMetrics._validate_inputs(qrels, results, k)
         
         precision_scores = {}
+        # Only consider queries that have both qrels and results
+        common_queries = set(qrels.keys()) & set(results.keys())
         
-        for query_id in qrels.keys():
-            if query_id not in results:
-                if per_query:
-                    precision_scores[query_id] = 0.0
-                continue
-                
+        for query_id in common_queries:
             # Get top-k documents
             result_items = list(results[query_id].items())
             result_items.sort(key=lambda x: x[1], reverse=True)
@@ -257,13 +243,13 @@ class IRMetrics:
             if per_query:
                 precision_scores[query_id] = precision
         
-        # Compute mean precision@k
-        if qrels:
+        # Compute mean precision@k based on queries with results
+        if common_queries:
             if per_query:
-                mean_precision = sum(precision_scores.values()) / len(qrels)
+                mean_precision = sum(precision_scores.values()) / len(common_queries)
                 return mean_precision, precision_scores
             else:
-                mean_precision = sum(precision_scores.values()) / len(qrels)
+                mean_precision = sum(precision_scores.values()) / len(common_queries)
                 return mean_precision
         else:
             if per_query:
@@ -295,23 +281,15 @@ class IRMetrics:
         IRMetrics._validate_inputs(qrels, results, k)
         
         recall_scores = {}
-        valid_queries = []
         
-        for query_id in qrels.keys():
+        # Base calculation on queries that have results
+        for query_id in results.keys():
             # Count total relevant documents for this query
-            total_relevant = sum(1 for rel in qrels[query_id].values() 
+            total_relevant = sum(1 for rel in qrels.get(query_id, {}).values() 
                                if rel >= relevance_threshold)
             
             if total_relevant == 0:
-                if per_query:
-                    recall_scores[query_id] = 0.0
-                continue
-                
-            valid_queries.append(query_id)
-            
-            if query_id not in results:
-                if per_query:
-                    recall_scores[query_id] = 0.0
+                recall_scores[query_id] = 0.0
                 continue
                 
             # Get top-k documents
@@ -322,23 +300,21 @@ class IRMetrics:
             # Count relevant documents in top-k
             relevant_found = 0
             for doc_id, _ in top_k_docs:
-                relevance = qrels[query_id].get(doc_id, 0)
+                relevance = qrels.get(query_id, {}).get(doc_id, 0)
                 if relevance >= relevance_threshold:
                     relevant_found += 1
             
             # Compute recall@k
             recall = relevant_found / total_relevant
-            
-            if per_query:
-                recall_scores[query_id] = recall
+            recall_scores[query_id] = recall
         
-        # Compute mean recall@k across queries with relevant documents
-        if valid_queries:
+        # Compute mean recall@k across all queries with results
+        if recall_scores:
             if per_query:
-                mean_recall = sum(recall_scores[qid] for qid in valid_queries) / len(valid_queries)
+                mean_recall = sum(recall_scores.values()) / len(recall_scores)
                 return mean_recall, recall_scores
             else:
-                mean_recall = sum(recall_scores.get(qid, 0.0) for qid in valid_queries) / len(valid_queries)
+                mean_recall = sum(recall_scores.values()) / len(recall_scores)
                 return mean_recall
         else:
             if per_query:
@@ -413,39 +389,29 @@ class IRMetrics:
         IRMetrics._validate_inputs(qrels, results, k)
         
         ap_scores = {}
-        valid_queries = []
         
-        for query_id in qrels.keys():
+        # Base calculation on queries that have results
+        for query_id in results.keys():
             # Skip queries with no relevant documents
-            total_relevant = sum(1 for rel in qrels[query_id].values() 
+            total_relevant = sum(1 for rel in qrels.get(query_id, {}).values() 
                                if rel >= relevance_threshold)
             if total_relevant == 0:
-                if per_query:
-                    ap_scores[query_id] = 0.0
-                continue
-                
-            valid_queries.append(query_id)
-            
-            if query_id not in results:
-                if per_query:
-                    ap_scores[query_id] = 0.0
+                ap_scores[query_id] = 0.0
                 continue
             
             # Compute AP@k for this query
             ap = IRMetrics.average_precision_at_k(
-                qrels[query_id], results[query_id], k, relevance_threshold
+                qrels.get(query_id, {}), results[query_id], k, relevance_threshold
             )
-            
-            if per_query:
-                ap_scores[query_id] = ap
+            ap_scores[query_id] = ap
         
-        # Compute MAP@k across queries with relevant documents
-        if valid_queries:
+        # Compute MAP@k across all queries with results
+        if ap_scores:
             if per_query:
-                mean_ap = sum(ap_scores[qid] for qid in valid_queries) / len(valid_queries)
+                mean_ap = sum(ap_scores.values()) / len(ap_scores)
                 return mean_ap, ap_scores
             else:
-                mean_ap = sum(ap_scores.get(qid, 0.0) for qid in valid_queries) / len(valid_queries)
+                mean_ap = sum(ap_scores.values()) / len(ap_scores)
                 return mean_ap
         else:
             if per_query:
@@ -477,21 +443,13 @@ class IRMetrics:
         IRMetrics._validate_inputs(qrels, results, k)
         
         rr_scores = {}
-        valid_queries = []
         
-        for query_id in qrels.keys():
+        # Base calculation on queries that have results
+        for query_id in results.keys():
             # Skip queries with no relevant documents  
-            has_relevant = any(rel >= relevance_threshold for rel in qrels[query_id].values())
+            has_relevant = any(rel >= relevance_threshold for rel in qrels.get(query_id, {}).values())
             if not has_relevant:
-                if per_query:
-                    rr_scores[query_id] = 0.0
-                continue
-                
-            valid_queries.append(query_id)
-            
-            if query_id not in results:
-                if per_query:
-                    rr_scores[query_id] = 0.0
+                rr_scores[query_id] = 0.0
                 continue
             
             # Get ranked documents
@@ -501,21 +459,20 @@ class IRMetrics:
             # Find rank of first relevant document
             rr = 0.0
             for i, (doc_id, _) in enumerate(result_items[:k]):
-                relevance = qrels[query_id].get(doc_id, 0)
+                relevance = qrels.get(query_id, {}).get(doc_id, 0)
                 if relevance >= relevance_threshold:
                     rr = 1.0 / (i + 1)  # i+1 because rank is 1-based
                     break
             
-            if per_query:
-                rr_scores[query_id] = rr
+            rr_scores[query_id] = rr
         
-        # Compute MRR@k across queries with relevant documents
-        if valid_queries:
+        # Compute MRR@k across all queries with results
+        if rr_scores:
             if per_query:
-                mean_rr = sum(rr_scores[qid] for qid in valid_queries) / len(valid_queries)
+                mean_rr = sum(rr_scores.values()) / len(rr_scores)
                 return mean_rr, rr_scores
             else:
-                mean_rr = sum(rr_scores.get(qid, 0.0) for qid in valid_queries) / len(valid_queries)
+                mean_rr = sum(rr_scores.values()) / len(rr_scores)
                 return mean_rr
         else:
             if per_query:
@@ -547,21 +504,13 @@ class IRMetrics:
         IRMetrics._validate_inputs(qrels, results, k)
         
         success_scores = {}
-        valid_queries = []
         
-        for query_id in qrels.keys():
+        # Base calculation on queries that have results
+        for query_id in results.keys():
             # Skip queries with no relevant documents
-            has_relevant = any(rel >= relevance_threshold for rel in qrels[query_id].values())
+            has_relevant = any(rel >= relevance_threshold for rel in qrels.get(query_id, {}).values())
             if not has_relevant:
-                if per_query:
-                    success_scores[query_id] = 0.0
-                continue
-                
-            valid_queries.append(query_id)
-            
-            if query_id not in results:
-                if per_query:
-                    success_scores[query_id] = 0.0
+                success_scores[query_id] = 0.0
                 continue
             
             # Check if any document in top-k is relevant
@@ -570,21 +519,20 @@ class IRMetrics:
             
             success = 0.0
             for doc_id, _ in result_items[:k]:
-                relevance = qrels[query_id].get(doc_id, 0)
+                relevance = qrels.get(query_id, {}).get(doc_id, 0)
                 if relevance >= relevance_threshold:
                     success = 1.0
                     break
             
-            if per_query:
-                success_scores[query_id] = success
+            success_scores[query_id] = success
         
-        # Compute Success@k across queries with relevant documents
-        if valid_queries:
+        # Compute Success@k across all queries with results
+        if success_scores:
             if per_query:
-                mean_success = sum(success_scores[qid] for qid in valid_queries) / len(valid_queries)
+                mean_success = sum(success_scores.values()) / len(success_scores)
                 return mean_success, success_scores
             else:
-                mean_success = sum(success_scores.get(qid, 0.0) for qid in valid_queries) / len(valid_queries)
+                mean_success = sum(success_scores.values()) / len(success_scores)
                 return mean_success
         else:
             if per_query:
