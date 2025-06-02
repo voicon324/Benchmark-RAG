@@ -460,7 +460,7 @@ class DenseTextRetriever(BaseRetrievalModel):
         Returns:
             Dictionary mapping query_id to embedding array
         """
-        show_progress = kwargs.get('show_progress', False)
+        show_progress = kwargs.get('show_progress', True)
         
         # Extract query texts and IDs
         query_texts = []
