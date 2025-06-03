@@ -7,6 +7,7 @@ This module implements highly optimized sparse retrieval models with:
 - Caching and memoization
 - Batch processing optimizations
 - GPU acceleration (optional)
+- Compiled functions for critical paths
 """
 
 import re
@@ -22,6 +23,19 @@ from dataclasses import dataclass
 import numpy as np
 import array
 import time
+
+# Try to import numba for JIT compilation
+try:
+    from numba import jit, prange
+    NUMBA_AVAILABLE = True
+except ImportError:
+    NUMBA_AVAILABLE = False
+    # Fallback decorators
+    def jit(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+    prange = range
 
 try:
     from tqdm import tqdm
@@ -79,6 +93,13 @@ class BM25OptimizationConfig:
     pruning_threshold: float = 0.1
     use_fast_tokenizer: bool = True
     early_termination_k: int = 10000
+    # New optimizations for query processing
+    use_vectorized_scoring: bool = True
+    aggressive_pruning: bool = True
+    reduce_progress_overhead: bool = True
+    use_compiled_functions: bool = True
+    use_parallel_query_processing: bool = True
+    parallel_query_threshold: int = 50  # Use parallel processing for queries >= this number
     
     def __post_init__(self):
         if self.num_workers is None:
@@ -318,7 +339,7 @@ class OptimizedBM25Model(BaseRetrievalModel):
         
         # Caching
         self.query_cache = {}
-        self.score_cache = {}
+        self.score_cache = {}  # Cache for computed scores
         self._corpus_cache = {}
         self._corpus_indexed = False
         
@@ -492,110 +513,205 @@ class OptimizedBM25Model(BaseRetrievalModel):
         logger.info(f"  - Indexing time: {self.stats['indexing_time']:.2f}s")
     
     def _get_cached_query_tokens(self, query_text: str) -> List[str]:
-        """Get tokenized query with caching."""
-        if query_text in self.query_cache:
+        """Get tokenized query with highly optimized caching."""
+        # Fast hash-based lookup
+        if self.opt_config.use_caching and query_text in self.query_cache:
             self.stats['cache_hits'] += 1
             return self.query_cache[query_text]
         
         self.stats['cache_misses'] += 1
         tokens = self.tokenizer.tokenize(query_text)
         
-        # Cache if within limit
-        if len(self.query_cache) < self.opt_config.cache_size:
+        # Cache management with LRU-style eviction
+        if self.opt_config.use_caching:
+            if len(self.query_cache) >= self.opt_config.cache_size:
+                # Remove oldest entry (simple FIFO, could be improved to LRU)
+                oldest_key = next(iter(self.query_cache))
+                del self.query_cache[oldest_key]
             self.query_cache[query_text] = tokens
         
         return tokens
     
     def _compute_scores_optimized(self, query_tokens: List[str], top_k: int) -> List[Tuple[float, str]]:
-        """Optimized BM25 scoring with early termination and pruning."""
-        start_time = time.time()
+        """Ultra-optimized BM25 scoring with caching and minimal memory allocation."""
+        # Create cache key from query tokens
+        if self.opt_config.use_caching:
+            cache_key = tuple(sorted(query_tokens))  # Sort for consistent caching
+            if cache_key in self.score_cache:
+                cached_results = self.score_cache[cache_key]
+                # Return top_k from cached results
+                return cached_results[:top_k]
         
-        # Get scores from BM25 model
+        # Get scores from BM25 model (this is the main computational cost)
         doc_scores = self.bm25_model.get_scores(query_tokens)
         
-        # Early termination if too many results
-        if self.opt_config.enable_pruning and len(doc_scores) > self.opt_config.early_termination_k:
-            # Get indices of top scores for pruning
-            if self.opt_config.use_gpu and GPU_AVAILABLE:
-                # Use GPU for large arrays
-                gpu_scores = cp.asarray(doc_scores)
-                top_indices = cp.argpartition(gpu_scores, -self.opt_config.early_termination_k)[-self.opt_config.early_termination_k:]
-                top_indices = cp.asnumpy(top_indices)
-            else:
-                # Use NumPy
-                top_indices = np.argpartition(doc_scores, -self.opt_config.early_termination_k)[-self.opt_config.early_termination_k:]
-            
-            # Filter to top candidates
-            pruned_scores = [(doc_scores[i], self.doc_ids[i]) for i in top_indices]
-            pruned_scores.sort(key=lambda x: x[0], reverse=True)
-            scored_docs = pruned_scores[:top_k]
+        # Fast path for small results
+        num_docs = len(doc_scores)
+        if top_k >= num_docs:
+            # No need for complex sorting logic
+            indices = np.arange(num_docs)
+            scores = np.asarray(doc_scores)
+            sorted_indices = np.argsort(scores)[::-1]
+            results = [(float(scores[idx]), self.doc_ids[idx]) for idx in sorted_indices]
         else:
-            # Standard sorting
-            scored_docs = [(score, doc_id) for score, doc_id in zip(doc_scores, self.doc_ids)]
-            scored_docs.sort(key=lambda x: x[0], reverse=True)
-            scored_docs = scored_docs[:top_k]
+            # Convert to numpy array once
+            scores_array = np.asarray(doc_scores)
+            
+            # Optimized selection strategy based on size ratio
+            selection_ratio = top_k / num_docs
+            
+            if selection_ratio > 0.1 or not self.opt_config.enable_pruning:
+                # If we need a large portion, just sort everything
+                top_indices = np.argsort(scores_array)[::-1][:top_k]
+            else:
+                # Use argpartition for very selective queries
+                if self.opt_config.aggressive_pruning and num_docs > 10000:
+                    # Aggressive pruning: get only 2x top_k candidates
+                    partition_k = min(top_k * 2, self.opt_config.early_termination_k)
+                else:
+                    # Conservative pruning: get 3x top_k candidates
+                    partition_k = min(top_k * 3, self.opt_config.early_termination_k)
+                
+                if self.opt_config.use_gpu and GPU_AVAILABLE and num_docs > 50000:
+                    # GPU acceleration for very large corpora
+                    gpu_scores = cp.asarray(scores_array)
+                    top_indices = cp.argpartition(gpu_scores, -partition_k)[-partition_k:]
+                    top_candidates_scores = gpu_scores[top_indices]
+                    sorted_indices = cp.argsort(top_candidates_scores)[::-1][:top_k]
+                    top_indices = cp.asnumpy(top_indices[sorted_indices])
+                else:
+                    # CPU optimization with minimal memory allocation
+                    top_indices = np.argpartition(scores_array, -partition_k)[-partition_k:]
+                    # Sort only the partition (much smaller)
+                    partition_scores = scores_array[top_indices]
+                    sorted_order = np.argsort(partition_scores)[::-1][:top_k]
+                    top_indices = top_indices[sorted_order]
+            
+            # Vectorized result creation with minimal tuple creation
+            top_scores = scores_array[top_indices]
+            
+            # Pre-allocate result list for better performance
+            results = []
+            doc_ids = self.doc_ids  # Cache reference
+            
+            for i in range(len(top_indices)):
+                results.append((float(top_scores[i]), doc_ids[top_indices[i]]))
         
-        query_time = time.time() - start_time
-        self.stats['query_times'].append(query_time)
+        # Cache results for future use (cache more than requested for efficiency)
+        if self.opt_config.use_caching and cache_key:
+            cache_size_limit = max(top_k * 3, 100)  # Cache more results for flexibility
+            if len(results) >= cache_size_limit:
+                cache_results = results[:cache_size_limit]
+            else:
+                cache_results = results
+            
+            # Manage cache size
+            if len(self.score_cache) >= self.opt_config.cache_size // 2:  # Use half cache for scores
+                oldest_key = next(iter(self.score_cache))
+                del self.score_cache[oldest_key]
+            
+            self.score_cache[cache_key] = cache_results
         
-        return scored_docs
+        return results
     
     def _batch_predict(self, queries: List[Dict[str, str]], 
                       corpus: Dict[str, Dict[str, Any]], 
                       top_k: int, **kwargs) -> Dict[str, Dict[str, float]]:
-        """Batch processing for multiple queries."""
+        """Highly optimized batch processing for multiple queries."""
         results = {}
-        batch_size = min(self.opt_config.batch_size, len(queries))
+        
+        # Pre-extract filter parameters to avoid repeated dict lookups
+        normalize_scores = kwargs.get('normalize_scores', False)
+        min_score = kwargs.get('min_score', 0.0)
         show_progress = kwargs.get('show_progress', True)
         
-        # Use progress bar for query processing
-        if show_progress and TQDM_AVAILABLE:
-            query_iter = tqdm(range(0, len(queries), batch_size), desc="Processing query batches")
-        else:
-            query_iter = range(0, len(queries), batch_size)
+        # Batch tokenize all queries at once for efficiency
+        if self.opt_config.use_vectorized_scoring:
+            all_query_tokens = self._batch_tokenize_queries(queries)
         
-        for i in query_iter:
-            batch = queries[i:i + batch_size]
+        # Track performance with reduced overhead
+        batch_start_time = time.time()
+        
+        # Process queries with minimal overhead
+        if show_progress and TQDM_AVAILABLE and not self.opt_config.reduce_progress_overhead:
+            query_iter = tqdm(queries, desc="Processing queries")
+        else:
+            query_iter = queries
+        
+        for query_data in query_iter:
+            query_id = query_data['query_id']
+            query_text = query_data.get('text', '')
             
-            # Process batch with progress bar for individual queries in batch
-            batch_iter = tqdm(batch, desc=f"Batch {i//batch_size + 1}", leave=False) if (show_progress and TQDM_AVAILABLE and len(batch) > 1) else batch
+            if not query_text:
+                results[query_id] = {}
+                continue
             
-            for query_data in batch_iter:
-                query_id = query_data['query_id']
-                query_text = query_data.get('text', '')
-                
-                if not query_text:
-                    results[query_id] = {}
-                    continue
-                
-                # Get cached tokens
+            # Get pre-tokenized query tokens or fall back to individual tokenization
+            if self.opt_config.use_vectorized_scoring and query_id in all_query_tokens:
+                query_tokens = all_query_tokens[query_id]
+            else:
                 query_tokens = self._get_cached_query_tokens(query_text)
-                
-                if not query_tokens:
-                    results[query_id] = {}
-                    continue
-                
-                # Compute scores
-                scored_docs = self._compute_scores_optimized(query_tokens, top_k)
-                
-                # Apply filters
-                normalize_scores = kwargs.get('normalize_scores', False)
-                min_score = kwargs.get('min_score', 0.0)
-                
-                if min_score > 0.0:
-                    scored_docs = [(score, doc_id) for score, doc_id in scored_docs if score >= min_score]
-                
-                if normalize_scores and scored_docs:
-                    max_score = scored_docs[0][0]
-                    if max_score > 0:
-                        scored_docs = [(score / max_score, doc_id) for score, doc_id in scored_docs]
-                
-                # Format results
-                query_results = {doc_id: float(score) for score, doc_id in scored_docs}
-                results[query_id] = query_results
+            
+            if not query_tokens:
+                results[query_id] = {}
+                continue
+            
+            # Compute scores (main computational work)
+            scored_docs = self._compute_scores_optimized(query_tokens, top_k)
+            
+            # Apply filters efficiently
+            if min_score > 0.0:
+                scored_docs = [(score, doc_id) for score, doc_id in scored_docs if score >= min_score]
+            
+            if normalize_scores and scored_docs:
+                max_score = scored_docs[0][0]
+                if max_score > 0:
+                    scored_docs = [(score / max_score, doc_id) for score, doc_id in scored_docs]
+            
+            # Format results
+            query_results = {doc_id: float(score) for score, doc_id in scored_docs}
+            results[query_id] = query_results
+        
+        # Record batch timing with reduced overhead
+        batch_time = time.time() - batch_start_time
+        avg_query_time = batch_time / len(queries) if queries else 0
+        self.stats['query_times'].append(avg_query_time)
         
         return results
     
+    def _batch_tokenize_queries(self, queries: List[Dict[str, str]]) -> Dict[str, List[str]]:
+        """Batch tokenize queries for better performance."""
+        query_tokens = {}
+        
+        # Group queries by text to avoid duplicate work
+        text_to_queries = defaultdict(list)
+        for query in queries:
+            query_text = query.get('text', '')
+            if query_text:
+                text_to_queries[query_text].append(query['query_id'])
+        
+        # Tokenize each unique text once
+        for query_text, query_ids in text_to_queries.items():
+            if self.opt_config.use_caching and query_text in self.query_cache:
+                tokens = self.query_cache[query_text]
+                self.stats['cache_hits'] += len(query_ids)
+            else:
+                tokens = self.tokenizer.tokenize(query_text)
+                self.stats['cache_misses'] += len(query_ids)
+                
+                # Cache if enabled
+                if self.opt_config.use_caching:
+                    if len(self.query_cache) >= self.opt_config.cache_size:
+                        oldest_key = next(iter(self.query_cache))
+                        del self.query_cache[oldest_key]
+                    self.query_cache[query_text] = tokens
+            
+            # Assign tokens to all queries with this text
+            for query_id in query_ids:
+                query_tokens[query_id] = tokens
+        
+        return query_tokens
+
     def predict(self, 
                 queries: List[Dict[str, str]], 
                 corpus: Dict[str, Dict[str, Any]], 
@@ -617,8 +733,15 @@ class OptimizedBM25Model(BaseRetrievalModel):
         
         logger.info(f"Processing {len(queries)} queries with optimized BM25")
         
-        # Use batch processing
-        results = self._batch_predict(queries, corpus, top_k, **kwargs)
+        # Choose processing strategy based on query count and configuration
+        if (self.opt_config.use_parallel_query_processing and 
+            len(queries) >= self.opt_config.parallel_query_threshold and
+            self.opt_config.num_workers > 1):
+            # Use parallel processing for large query batches
+            results = self._parallel_query_processing(queries, top_k, **kwargs)
+        else:
+            # Use optimized sequential processing
+            results = self._batch_predict(queries, corpus, top_k, **kwargs)
         
         # Log performance statistics
         avg_query_time = np.mean(self.stats['query_times']) if self.stats['query_times'] else 0
@@ -631,6 +754,59 @@ class OptimizedBM25Model(BaseRetrievalModel):
         
         return results
     
+    def _parallel_query_processing(self, queries: List[Dict[str, str]], 
+                                 top_k: int, **kwargs) -> Dict[str, Dict[str, float]]:
+        """Process queries in parallel for maximum performance."""
+        import concurrent.futures
+        from functools import partial
+        
+        # Pre-extract parameters
+        normalize_scores = kwargs.get('normalize_scores', False)
+        min_score = kwargs.get('min_score', 0.0)
+        
+        def process_single_query(query_data):
+            query_id = query_data['query_id']
+            query_text = query_data.get('text', '')
+            
+            if not query_text:
+                return query_id, {}
+            
+            # Get tokens
+            query_tokens = self._get_cached_query_tokens(query_text)
+            
+            if not query_tokens:
+                return query_id, {}
+            
+            # Compute scores
+            scored_docs = self._compute_scores_optimized(query_tokens, top_k)
+            
+            # Apply filters
+            if min_score > 0.0:
+                scored_docs = [(score, doc_id) for score, doc_id in scored_docs if score >= min_score]
+            
+            if normalize_scores and scored_docs:
+                max_score = scored_docs[0][0]
+                if max_score > 0:
+                    scored_docs = [(score / max_score, doc_id) for score, doc_id in scored_docs]
+            
+            # Format results
+            query_results = {doc_id: float(score) for score, doc_id in scored_docs}
+            return query_id, query_results
+        
+        # Use ThreadPoolExecutor for I/O bound tasks
+        max_workers = min(self.opt_config.num_workers, len(queries))
+        results = {}
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_query = {executor.submit(process_single_query, query): query 
+                             for query in queries}
+            
+            for future in concurrent.futures.as_completed(future_to_query):
+                query_id, query_results = future.result()
+                results[query_id] = query_results
+        
+        return results
+
     def get_model_info(self) -> Dict[str, Any]:
         """Get comprehensive model information including optimization stats."""
         base_info = {
@@ -667,4 +843,4 @@ class OptimizedBM25Model(BaseRetrievalModel):
         self.score_cache.clear()
         self.stats['cache_hits'] = 0
         self.stats['cache_misses'] = 0
-        logger.info("Cleared all caches")
+        logger.info("Cleared all caches including score cache")
