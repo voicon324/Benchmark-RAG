@@ -41,7 +41,7 @@ class ModelConfiguration:
     
     def __post_init__(self):
         """Validate configuration after initialization."""
-        valid_types = ['sparse', 'dense', 'image_retrieval', 'multimodal']
+        valid_types = ['sparse', 'optimized_sparse', 'dense', 'image_retrieval', 'multimodal']
         if self.type not in valid_types:
             raise ValueError(f"Invalid model type: {self.type}")
         
@@ -51,7 +51,7 @@ class ModelConfiguration:
     
     def validate(self):
         """Validate model configuration."""
-        valid_types = ['sparse', 'dense', 'image_retrieval', 'multimodal']
+        valid_types = ['sparse', 'optimized_sparse', 'dense', 'image_retrieval', 'multimodal']
         if self.type not in valid_types:
             raise ValueError(f"Invalid model type: {self.type}")
         
@@ -305,7 +305,7 @@ class ExperimentConfig:
         for model in self.models:
             for dataset in self.datasets:
                 # Check text model with image dataset compatibility
-                if model.type in ['sparse', 'dense'] and dataset.type == 'image':
+                if model.type in ['sparse', 'optimized_sparse', 'dense'] and dataset.type == 'image':
                     # Only allow if OCR is enabled in dataset config
                     if not dataset.config_overrides.get('ocr_enabled', False):
                         raise ValueError(

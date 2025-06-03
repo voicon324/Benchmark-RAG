@@ -17,6 +17,7 @@ from .base import (
 
 # Import concrete implementations
 from .sparse import BM25Model
+from .optimized_sparse import OptimizedBM25Model
 from .dense import (
     DenseTextRetriever,
     SentenceBERTModel,
@@ -46,6 +47,7 @@ __all__ = [
     
     # Sparse models
     "BM25Model",
+    "OptimizedBM25Model",
     
     # Dense models
     "DenseTextRetriever",

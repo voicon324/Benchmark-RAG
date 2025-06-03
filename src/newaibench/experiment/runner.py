@@ -16,7 +16,7 @@ from dataclasses import dataclass, asdict
 
 # NewAIBench imports
 from ..datasets import create_dataset_loader, DatasetConfig, DocumentImageDatasetConfig
-from ..models import BaseRetrievalModel, BM25Model, DenseTextRetriever
+from ..models import BaseRetrievalModel, BM25Model, DenseTextRetriever, OptimizedBM25Model
 from ..models.image_retrieval import OCRBasedDocumentRetriever, ImageEmbeddingDocumentRetriever
 from ..models.colvintern_retrieval import ColVinternDocumentRetriever
 from ..evaluation import Evaluator, EvaluationConfig
@@ -146,6 +146,17 @@ class ExperimentRunner:
                     **model_config.parameters
                 }
                 model = BM25Model(config)
+                
+            elif model_config.type == 'optimized_sparse':
+                # Create OptimizedBM25 model
+                config = {
+                    'name': model_config.name,
+                    'k1': model_config.parameters.get('k1', 1.2),
+                    'b': model_config.parameters.get('b', 0.75),
+                    'device': model_config.device,
+                    **model_config.parameters
+                }
+                model = OptimizedBM25Model(config)
                 
             elif model_config.type == 'dense':
                 # Create dense text retriever

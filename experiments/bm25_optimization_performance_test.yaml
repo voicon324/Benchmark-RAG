@@ -1,0 +1,127 @@
+# BM25 Optimization Test - Simple Configuration
+# Test OptimizedBM25Model với tất cả tối ưu hóa được bật
+
+description: "OptimizedBM25 Test - Single model with all optimizations enabled"
+
+models:
+  # OptimizedBM25 - Tất cả tối ưu hóa được bật
+  - name: "optimized_bm25_full_features"
+    type: "optimized_sparse"
+    model_name_or_path: ""
+    parameters:
+      k1: 1.6
+      b: 0.75
+      tokenizer: "simple"
+      lowercase: true
+      remove_stopwords: false
+      min_token_length: 2
+      # Tất cả tối ưu hóa được bật
+      use_parallel_indexing: true
+      num_workers: 8
+      use_sparse_matrix: true
+      use_memory_mapping: true
+      use_caching: true
+      cache_size: 50000
+      batch_size: 2000
+      use_gpu: false
+      enable_pruning: true
+      pruning_threshold: 0.1
+      use_fast_tokenizer: true
+      early_termination_k: 5000
+    device: "cpu"
+    batch_size: 64
+
+datasets:
+  - name: "bkai_legal_test_data"
+    type: "text"
+    data_dir: "/home/hkduy/NewAI/new_bench/BKAI_law_data/newaibench_formatted_data/legal_data"
+    max_samples: 5000  # Limit for performance testing
+    config_overrides:
+      cache_enabled: true
+      validation_enabled: true
+      queries_file: "train_queries.jsonl"
+      qrels_file: "train_qrels.txt"
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20]
+  relevance_threshold: 1
+  include_per_query: false  # Disable for performance
+  top_k: 100
+  save_run_file: true
+  run_file_format: "trec"
+
+# Performance benchmarking configuration
+benchmarking:
+  enable_timing: true
+  enable_memory_profiling: true
+  include_indexing_time: true
+  include_query_time: true
+  repeat_experiments: 3  # Run each model 3 times for averaging
+  warm_up_queries: 10   # Number of warm-up queries before timing
+
+# Output configuration
+output:
+  output_dir: "./results/bm25_optimization_performance_test"
+  experiment_name: "bm25_optimization_comparison"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: true
+  
+  # Performance analysis output
+  generate_performance_report: true
+  include_optimization_stats: true
+  compare_accuracy: true
+  compare_timing: true
+  compare_memory_usage: true
+
+# Accuracy validation configuration
+accuracy_validation:
+  enable: true
+  reference_model: "bm25_original_baseline"  # Use original BM25 as reference
+  tolerance:
+    ndcg@10: 0.02  # Allow 2% difference in NDCG@10
+    map@10: 0.02   # Allow 2% difference in MAP@10
+    recall@100: 0.01  # Allow 1% difference in recall@100
+  
+# Expected performance improvements (for validation)
+expected_improvements:
+  indexing_speedup: 1.5  # Expect at least 1.5x faster indexing
+  query_speedup: 1.3     # Expect at least 1.3x faster queries
+  memory_efficiency: 0.8  # Expect 20% less memory usage
+  accuracy_retention: 0.98  # Expect at least 98% accuracy retention
+
+# Optimization test cases
+test_cases:
+  - name: "parallel_indexing_test"
+    description: "Test parallel indexing performance gain"
+    focus: "indexing_time"
+    models: ["bm25_original_baseline", "optimized_bm25_basic", "optimized_bm25_full"]
+    
+  - name: "caching_effectiveness_test"
+    description: "Test query caching effectiveness"
+    focus: "query_time"
+    models: ["bm25_original_baseline", "optimized_bm25_basic"]
+    repeat_queries: true  # Test same queries multiple times
+    
+  - name: "memory_usage_test"
+    description: "Test memory efficiency improvements"
+    focus: "memory_usage"
+    models: ["bm25_original_baseline", "optimized_bm25_memory_efficient"]
+    
+  - name: "accuracy_preservation_test"
+    description: "Validate that optimizations preserve accuracy"
+    focus: "accuracy"
+    models: ["bm25_original_baseline", "optimized_bm25_basic", "optimized_bm25_full"]
+    strict_comparison: true
+    
+  - name: "scaling_test"
+    description: "Test performance scaling with different optimizations"
+    focus: "scalability"
+    models: ["optimized_bm25_basic", "optimized_bm25_full", "optimized_bm25_high_perf"]
+    
+  - name: "tokenization_optimization_test"
+    description: "Test fast tokenizer improvements"
+    focus: "tokenization"
+    models: ["bm25_original_baseline", "optimized_bm25_fast_tokenizer"]
