@@ -24,6 +24,15 @@ import array
 import time
 
 try:
+    from tqdm import tqdm
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
+    # Fallback tqdm for when library is not available
+    def tqdm(iterable, **kwargs):
+        return iterable
+
+try:
     from rank_bm25 import BM25Okapi
 except ImportError:
     raise ImportError(
@@ -247,7 +256,10 @@ def _process_chunk_parallel(args):
     chunk_doc_ids = []
     chunk_tokenized = []
     
-    for doc_id, doc_data in chunk_docs:
+    # Use tqdm if available and show_progress is True
+    iterator = tqdm(chunk_docs, desc="Processing chunk", disable=not (show_progress and TQDM_AVAILABLE)) if TQDM_AVAILABLE else chunk_docs
+    
+    for doc_id, doc_data in iterator:
         # Extract text content
         text_content = doc_data.get('text', '')
         if not text_content:
@@ -338,6 +350,8 @@ class OptimizedBM25Model(BaseRetrievalModel):
         logger.info(f"Starting parallel indexing with {self.opt_config.num_workers} workers")
         start_time = time.time()
         
+        show_progress = kwargs.get('show_progress', True)
+        
         # Prepare chunks for parallel processing
         corpus_items = list(corpus.items())
         chunk_size = max(1, len(corpus_items) // self.opt_config.num_workers)
@@ -348,19 +362,34 @@ class OptimizedBM25Model(BaseRetrievalModel):
         
         # Prepare arguments for parallel processing
         chunk_args = [
-            (chunk, self.tokenizer, kwargs.get('show_progress', True)) 
+            (chunk, self.tokenizer, show_progress) 
             for chunk in chunks
         ]
         
         # Process in parallel
+        if show_progress and TQDM_AVAILABLE:
+            logger.info(f"Processing {len(corpus)} documents in {len(chunks)} parallel chunks...")
+        
         with mp.Pool(self.opt_config.num_workers) as pool:
-            results = pool.map(_process_chunk_parallel, chunk_args)
+            if show_progress and TQDM_AVAILABLE:
+                results = list(tqdm(
+                    pool.imap(_process_chunk_parallel, chunk_args),
+                    total=len(chunk_args),
+                    desc="Parallel indexing chunks"
+                ))
+            else:
+                results = pool.map(_process_chunk_parallel, chunk_args)
         
         # Merge results
         self.doc_ids = []
         self.tokenized_corpus = []
         
-        for chunk_doc_ids, chunk_tokenized in results:
+        if show_progress and TQDM_AVAILABLE:
+            results_iter = tqdm(results, desc="Merging chunks")
+        else:
+            results_iter = results
+            
+        for chunk_doc_ids, chunk_tokenized in results_iter:
             self.doc_ids.extend(chunk_doc_ids)
             self.tokenized_corpus.extend(chunk_tokenized)
         
@@ -390,7 +419,15 @@ class OptimizedBM25Model(BaseRetrievalModel):
         texts = []
         doc_ids = []
         
-        for doc_id, doc_data in corpus.items():
+        corpus_items = list(corpus.items())
+        
+        # Use progress bar for document processing
+        if show_progress and TQDM_AVAILABLE:
+            corpus_iter = tqdm(corpus_items, desc="Processing documents")
+        else:
+            corpus_iter = corpus_items
+        
+        for doc_id, doc_data in corpus_iter:
             text_content = doc_data.get('text', '')
             if not text_content:
                 text_content = doc_data.get('title', '') + ' ' + doc_data.get('ocr_text', '')
@@ -509,12 +546,21 @@ class OptimizedBM25Model(BaseRetrievalModel):
         """Batch processing for multiple queries."""
         results = {}
         batch_size = min(self.opt_config.batch_size, len(queries))
+        show_progress = kwargs.get('show_progress', True)
         
-        for i in range(0, len(queries), batch_size):
+        # Use progress bar for query processing
+        if show_progress and TQDM_AVAILABLE:
+            query_iter = tqdm(range(0, len(queries), batch_size), desc="Processing query batches")
+        else:
+            query_iter = range(0, len(queries), batch_size)
+        
+        for i in query_iter:
             batch = queries[i:i + batch_size]
             
-            # Process batch
-            for query_data in batch:
+            # Process batch with progress bar for individual queries in batch
+            batch_iter = tqdm(batch, desc=f"Batch {i//batch_size + 1}", leave=False) if (show_progress and TQDM_AVAILABLE and len(batch) > 1) else batch
+            
+            for query_data in batch_iter:
                 query_id = query_data['query_id']
                 query_text = query_data.get('text', '')
                 

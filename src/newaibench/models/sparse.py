@@ -11,6 +11,14 @@ from typing import Dict, List, Any, Optional, Union
 from collections import defaultdict
 import numpy as np
 
+# Import tqdm for progress bars
+try:
+    from tqdm import tqdm
+except ImportError:
+    # Fallback if tqdm is not available
+    def tqdm(iterable, **kwargs):
+        return iterable
+
 try:
     from rank_bm25 import BM25Okapi
 except ImportError:
@@ -185,8 +193,11 @@ class BM25Model(BaseRetrievalModel):
         self.doc_ids = []
         self.tokenized_corpus = []
         
-        # Process each document
-        for doc_id, doc_data in corpus.items():
+        # Process each document with progress bar
+        corpus_items = list(corpus.items())
+        iterator = tqdm(corpus_items, desc="Indexing documents", disable=not show_progress) if show_progress else corpus_items
+        
+        for doc_id, doc_data in iterator:
             # Extract text content
             text_content = doc_data.get('text', '')
             if not text_content:
@@ -199,9 +210,6 @@ class BM25Model(BaseRetrievalModel):
             # Store document ID and tokens
             self.doc_ids.append(doc_id)
             self.tokenized_corpus.append(tokens)
-            
-            if show_progress and len(self.doc_ids) % 1000 == 0:
-                logger.info(f"Processed {len(self.doc_ids)} documents")
         
         # Build BM25 index
         logger.info("Building BM25 index...")
@@ -257,12 +265,14 @@ class BM25Model(BaseRetrievalModel):
         # Extract parameters
         normalize_scores = kwargs.get('normalize_scores', False)
         min_score = kwargs.get('min_score', 0.0)
+        show_progress = kwargs.get('show_progress', True)
         
         results = {}
         
-        # Process each query
-        for query_data in queries:
-            logger.info(f"Processing query: {query_data.get('query_id', 'unknown')}")
+        # Process each query with progress bar
+        iterator = tqdm(queries, desc="Processing queries", disable=not show_progress) if show_progress else queries
+        
+        for query_data in iterator:
             query_id = query_data['query_id']
             query_text = query_data.get('text', '')
             
@@ -303,8 +313,12 @@ class BM25Model(BaseRetrievalModel):
             query_results = {doc_id: float(score) for score, doc_id in top_docs}
             results[query_id] = query_results
             
-            logger.debug(f"Query {query_id}: retrieved {len(query_results)} documents "
-                        f"(max_score: {top_docs[0][0] if top_docs else 0:.4f})")
+            # Update progress bar description with current query info if using tqdm
+            if show_progress and hasattr(iterator, 'set_postfix'):
+                iterator.set_postfix({
+                    'current_query': query_id[:10] + '...' if len(query_id) > 10 else query_id,
+                    'results': len(query_results)
+                })
         
         logger.info(f"BM25 prediction completed for {len(queries)} queries")
         return results

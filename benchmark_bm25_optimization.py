@@ -19,6 +19,14 @@ import memory_profiler
 import psutil
 import multiprocessing as mp
 
+# Import tqdm for progress bars
+try:
+    from tqdm import tqdm
+except ImportError:
+    # Fallback if tqdm is not available
+    def tqdm(iterable, **kwargs):
+        return iterable
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -57,7 +65,8 @@ class BM25PerformanceBenchmark:
         
         corpus = {}
         
-        for i in range(num_docs):
+        # Use progress bar for corpus generation
+        for i in tqdm(range(num_docs), desc="Generating test corpus"):
             # Generate document with varying length
             doc_length = np.random.poisson(avg_doc_length)
             doc_length = max(10, doc_length)  # Minimum 10 words
@@ -70,9 +79,6 @@ class BM25PerformanceBenchmark:
                 'title': f"Document {i}",
                 'metadata': {'length': doc_length}
             }
-            
-            if (i + 1) % 10000 == 0:
-                logger.info(f"Generated {i + 1} documents")
         
         return corpus
     
@@ -95,7 +101,7 @@ class BM25PerformanceBenchmark:
         common_words = [word for word, count in word_counts.most_common(200)]
         
         queries = []
-        for i in range(num_queries):
+        for i in tqdm(range(num_queries), desc="Generating test queries"):
             # Generate queries of varying length (1-5 words)
             query_length = np.random.randint(1, 6)
             query_words = np.random.choice(common_words, size=query_length, replace=False)
@@ -165,7 +171,8 @@ class BM25PerformanceBenchmark:
         
         base_config, opt_config = self.create_model_configs()
         
-        for corpus_size in corpus_sizes:
+        # Use progress bar for different corpus sizes
+        for corpus_size in tqdm(corpus_sizes, desc="Testing corpus sizes"):
             logger.info(f"Testing with corpus size: {corpus_size}")
             
             # Generate test corpus
@@ -242,7 +249,8 @@ class BM25PerformanceBenchmark:
         optimized_model.load_model()
         optimized_model.index_corpus(corpus)
         
-        for query_count in query_counts:
+        # Use progress bar for different query counts
+        for query_count in tqdm(query_counts, desc="Testing query counts"):
             logger.info(f"Testing with {query_count} queries")
             
             # Generate test queries
@@ -299,7 +307,8 @@ class BM25PerformanceBenchmark:
         
         base_config, opt_config = self.create_model_configs()
         
-        for corpus_size in corpus_sizes:
+        # Use progress bar for different corpus sizes  
+        for corpus_size in tqdm(corpus_sizes, desc="Testing memory usage"):
             logger.info(f"Memory test with corpus size: {corpus_size}")
             
             corpus = self.generate_test_corpus(corpus_size)
