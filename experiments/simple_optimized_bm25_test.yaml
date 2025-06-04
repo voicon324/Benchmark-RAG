@@ -37,7 +37,7 @@ datasets:
   - name: "bkai_legal_test_data"
     type: "text"
     data_dir: "/home/hkduy/NewAI/new_bench/BKAI_law_data/newaibench_formatted_data/legal_data"
-    max_samples: 1000  # Small dataset for quick test
+    max_samples: 50000  # Small dataset for quick test
     config_overrides:
       cache_enabled: true
       validation_enabled: true

@@ -1,0 +1,243 @@
+name: "Advanced Optimized BM25 Performance Test"
+description: "Comprehensive test for OptimizedBM25Model with multiple optimization configurations and speed improvements"
+
+datasets:
+  - name: "ai_tech_corpus"
+    type: "simple"
+    queries:
+      - query_id: "q1"
+        text: "machine learning algorithms neural networks"
+      - query_id: "q2" 
+        text: "natural language processing transformers"
+      - query_id: "q3"
+        text: "deep learning convolutional networks"
+      - query_id: "q4"
+        text: "artificial intelligence research applications"
+      - query_id: "q5"
+        text: "computer vision image recognition"
+      - query_id: "q6"
+        text: "reinforcement learning optimization"
+      - query_id: "q7"
+        text: "data science analytics models"
+      - query_id: "q8"
+        text: "supervised learning classification"
+      - query_id: "q9"
+        text: "information retrieval search engines"
+      - query_id: "q10"
+        text: "recommendation systems collaborative filtering"
+    corpus:
+      - doc_id: "d1"
+        title: "Machine Learning Algorithms and Neural Networks"
+        text: "Machine learning algorithms enable computers to learn patterns from data. Neural networks, particularly deep learning architectures, have revolutionized pattern recognition and artificial intelligence applications across numerous domains including computer vision and natural language processing."
+      - doc_id: "d2"
+        title: "Natural Language Processing with Transformers"
+        text: "Natural language processing leverages machine learning and transformers to understand human language. Modern NLP systems use attention mechanisms and large language models for tasks like translation, sentiment analysis, and question answering with remarkable accuracy."
+      - doc_id: "d3"
+        title: "Deep Learning and Convolutional Networks"
+        text: "Deep learning employs multi-layer neural networks to learn hierarchical data representations. Convolutional neural networks excel at image processing tasks, enabling breakthrough applications in computer vision, medical imaging, and autonomous systems."
+      - doc_id: "d4"
+        title: "Artificial Intelligence Research and Applications"
+        text: "Artificial intelligence research spans machine learning, robotics, and cognitive computing. AI applications include healthcare diagnostics, autonomous vehicles, financial modeling, and scientific discovery through advanced algorithmic optimization and data analysis."
+      - doc_id: "d5"
+        title: "Computer Vision and Image Recognition"
+        text: "Computer vision systems use deep learning and neural networks to interpret visual data. Image recognition applications include facial recognition, medical imaging analysis, autonomous navigation, and industrial quality control using sophisticated pattern matching algorithms."
+      - doc_id: "d6"
+        title: "Reinforcement Learning and Optimization"
+        text: "Reinforcement learning trains agents through environment interaction and reward optimization. These methods excel in game playing, robotics control, resource allocation, and decision-making scenarios requiring long-term strategic planning and adaptive behavior."
+      - doc_id: "d7"
+        title: "Data Science Analytics and Predictive Models"
+        text: "Data science combines statistical analysis with machine learning to extract insights from complex datasets. Predictive analytics models forecast trends using regression, clustering, and ensemble methods for business intelligence and scientific research."
+      - doc_id: "d8"
+        title: "Supervised Learning Classification Techniques"
+        text: "Supervised learning algorithms learn from labeled data to classify new instances. Classification techniques include support vector machines, random forests, and neural networks for applications like spam detection, medical diagnosis, and pattern recognition."
+      - doc_id: "d9"
+        title: "Information Retrieval and Search Engines"
+        text: "Information retrieval systems use indexing, ranking algorithms, and relevance scoring to find relevant documents. Search engines employ techniques like TF-IDF, BM25, and machine learning models to provide accurate and fast search results for web and enterprise applications."
+      - doc_id: "d10"
+        title: "Recommendation Systems and Collaborative Filtering"
+        text: "Recommendation systems predict user preferences using collaborative filtering, content-based methods, and hybrid approaches. These systems leverage machine learning algorithms to suggest products, content, and services in e-commerce, streaming platforms, and social media applications."
+
+models:
+  - name: "BM25_Baseline"
+    type: "BM25Model"
+    parameters:
+      k1: 1.5
+      b: 0.75
+      
+  - name: "OptimizedBM25_Conservative"
+    type: "OptimizedBM25Model"
+    parameters:
+      k1: 1.5
+      b: 0.75
+      optimization_config:
+        use_parallel_indexing: true
+        use_sparse_matrix: true
+        use_caching: true
+        use_vectorized_scoring: false
+        aggressive_pruning: false
+        reduce_progress_overhead: false
+        use_parallel_query_processing: false
+        num_workers: 2
+        cache_size: 500
+        
+  - name: "OptimizedBM25_Moderate"
+    type: "OptimizedBM25Model"
+    parameters:
+      k1: 1.5
+      b: 0.75
+      optimization_config:
+        use_parallel_indexing: true
+        use_sparse_matrix: true
+        use_caching: true
+        use_vectorized_scoring: true
+        aggressive_pruning: false
+        reduce_progress_overhead: true
+        use_parallel_query_processing: false
+        num_workers: 4
+        cache_size: 1000
+        
+  - name: "OptimizedBM25_Aggressive"
+    type: "OptimizedBM25Model"
+    parameters:
+      k1: 1.5
+      b: 0.75
+      optimization_config:
+        use_parallel_indexing: true
+        use_sparse_matrix: true
+        use_caching: true
+        use_vectorized_scoring: true
+        aggressive_pruning: true
+        reduce_progress_overhead: true
+        use_parallel_query_processing: true
+        parallel_query_threshold: 5
+        num_workers: 8
+        cache_size: 2000
+
+  - name: "OptimizedBM25_MaxPerformance"
+    type: "OptimizedBM25Model"
+    parameters:
+      k1: 1.2
+      b: 0.8
+      optimization_config:
+        use_parallel_indexing: true
+        use_sparse_matrix: true
+        use_caching: true
+        use_vectorized_scoring: true
+        aggressive_pruning: true
+        reduce_progress_overhead: true
+        use_parallel_query_processing: true
+        parallel_query_threshold: 3
+        num_workers: 16
+        cache_size: 5000
+
+evaluation:
+  metrics:
+    - "precision@1"
+    - "precision@3"
+    - "precision@5"
+    - "recall@1"
+    - "recall@3"
+    - "recall@5"
+    - "ndcg@5"
+    - "ndcg@10"
+    - "map@10"
+    - "mrr@10"
+  
+  query_processing:
+    top_k: 10
+    normalize_scores: true
+    show_progress: false
+    min_score: 0.0
+    
+  performance_tracking:
+    measure_indexing_time: true
+    measure_query_time: true
+    measure_memory_usage: false
+    detailed_timing: true
+    
+  expected_results:
+    # Machine learning query should match ML documents strongly
+    q1:
+      d1: 0.95  # Direct ML algorithms match
+      d3: 0.80  # Deep learning/neural networks
+      d8: 0.75  # Supervised learning
+    
+    # NLP query should match NLP and related docs
+    q2:
+      d2: 0.95  # Direct NLP transformers match
+      d4: 0.70  # AI research mentions
+      d1: 0.60  # ML algorithms connection
+    
+    # Deep learning query
+    q3:
+      d3: 0.95  # Direct deep learning CNN match
+      d1: 0.80  # Neural networks mentioned
+      d5: 0.75  # Computer vision uses deep learning
+    
+    # AI research query
+    q4:
+      d4: 0.95  # Direct AI research match
+      d1: 0.80  # ML is subset of AI
+      d6: 0.70  # Optimization methods
+    
+    # Computer vision query
+    q5:
+      d5: 0.95  # Direct computer vision match
+      d3: 0.80  # CNNs for image processing
+      d8: 0.65  # Classification techniques
+    
+    # Reinforcement learning query
+    q6:
+      d6: 0.95  # Direct RL optimization match
+      d4: 0.70  # AI research connection
+      d7: 0.60  # Analytics and modeling
+    
+    # Data science query
+    q7:
+      d7: 0.95  # Direct data science analytics match
+      d8: 0.80  # Supervised learning techniques
+      d1: 0.70  # ML algorithms
+    
+    # Supervised learning query
+    q8:
+      d8: 0.95  # Direct supervised learning match
+      d1: 0.85  # ML algorithms
+      d5: 0.70  # Classification applications
+      
+    # Information retrieval query
+    q9:
+      d9: 0.95  # Direct IR search engines match
+      d4: 0.70  # AI research connection
+      d7: 0.60  # Data analytics
+      
+    # Recommendation systems query
+    q10:
+      d10: 0.95  # Direct recommendation systems match
+      d1: 0.75   # ML algorithms
+      d7: 0.70   # Data science analytics
+
+reporting:
+  save_results: true
+  output_dir: "results/optimized_bm25_performance"
+  generate_plots: true
+  compare_models: true
+  
+  performance_analysis:
+    - indexing_time_comparison
+    - query_processing_speed
+    - memory_efficiency
+    - cache_effectiveness
+    - optimization_impact
+    - scalability_assessment
+    
+  detailed_metrics:
+    - query_by_query_analysis
+    - model_configuration_impact
+    - speedup_measurements
+    - accuracy_preservation_check
+    
+  visualizations:
+    - performance_comparison_charts
+    - optimization_impact_graphs
+    - query_time_distributions
+    - cache_hit_rate_analysis

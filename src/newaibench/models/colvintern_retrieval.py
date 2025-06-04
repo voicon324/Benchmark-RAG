@@ -161,7 +161,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         # Search parameters
         self.use_ann_index = params.get('use_ann_index', False)
         self.ann_backend = params.get('ann_backend', 'faiss')
-        self.normalize_embeddings = params.get('normalize_embeddings', True)
+        self.normalize_embeddings = params.get('normalize_embeddings', False)  # Changed from True to False
         self.scoring_method = params.get('scoring_method', 'cosine_similarity')  # 'multi_vector' or 'cosine_similarity'
         self.query_batch_size_scoring = params.get('query_batch_size_scoring', 1)  # Batch size for multi-vector scoring
         
@@ -385,9 +385,10 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                     # Convert to numpy and normalize if requested
                     embeddings = query_embeddings_tensor.cpu().float().numpy()
                     
+                    # Remove automatic normalization since ColVintern works better without it
                     if self.normalize_embeddings:
                         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-                    
+        
                     # Store embeddings
                     for query_id, embedding in zip(batch_query_ids, embeddings):
                         query_embeddings[query_id] = embedding
@@ -498,6 +499,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
                     # Convert to numpy and normalize if requested
                     embeddings = image_embeddings.cpu().float().numpy()
                     
+                    # Remove automatic normalization since ColVintern works better without it
                     if self.normalize_embeddings:
                         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
                     
@@ -530,11 +532,8 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         if self.ann_backend == 'faiss' and self.faiss_available:
             import faiss
             
-            # Create FAISS index
-            if self.normalize_embeddings:
-                self.ann_index = faiss.IndexFlatIP(self.embedding_dim)  # Inner product for normalized vectors
-            else:
-                self.ann_index = faiss.IndexFlatL2(self.embedding_dim)  # L2 distance
+            # Use inner product index for raw dot product similarity
+            self.ann_index = faiss.IndexFlatIP(self.embedding_dim)  # Inner product for raw embeddings
                 
             self.ann_index.add(embeddings_array.astype(np.float32))
             logger.info(f"Built FAISS index with {embeddings_array.shape[0]} embeddings")
@@ -542,11 +541,8 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
         elif self.ann_backend == 'hnswlib' and self.hnswlib_available:
             import hnswlib
             
-            # Create HNSWLIB index
-            if self.normalize_embeddings:
-                space = 'cosine'
-            else:
-                space = 'l2'
+            # Use inner product space for raw dot product
+            space = 'ip'  # Inner product space
                 
             self.ann_index = hnswlib.Index(space=space, dim=self.embedding_dim)
             self.ann_index.init_index(max_elements=len(embeddings_array), ef_construction=200, M=16)
@@ -554,7 +550,7 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             self.ann_index.set_ef(50)
             
             logger.info(f"Built HNSWLIB index with {embeddings_array.shape[0]} embeddings")
-    
+
     def index_corpus(self, corpus: Dict[str, Dict[str, Any]], **kwargs) -> None:
         """Index document images for fast retrieval."""
         if not self.is_loaded:
@@ -599,26 +595,19 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             
             logger.debug(f"Using multi-vector scoring for {len(query_embeddings)} queries x {len(doc_embeddings_array)} documents")
         else:
-            logger.info("Using traditional cosine similarity scoring")
+            logger.info("Using raw dot product similarity scoring")
             
-            # Traditional cosine similarity scoring
+            # Raw dot product similarity scoring (no normalization, no cosine)
             similarities = []
             for i, query_emb in enumerate(query_embeddings):
-                # Show progress for cosine similarity
+                # Show progress for dot product
                 if i % max(1, len(query_embeddings) // 10) == 0 or i == len(query_embeddings) - 1:
-                    print(f"Cosine similarity progress: {i+1}/{len(query_embeddings)} queries")
+                    print(f"Dot product similarity progress: {i+1}/{len(query_embeddings)} queries")
                 
-                # Compute similarities
-                if self.normalize_embeddings:
-                    query_similarities = np.dot(query_emb, doc_embeddings_array.T)
-                else:
-                    query_similarities = np.dot(query_emb, doc_embeddings_array.T) / (
-                        np.linalg.norm(query_emb) * np.linalg.norm(doc_embeddings_array, axis=1)
-                    )
+                # Compute raw dot product similarities
+                query_similarities = np.dot(query_emb, doc_embeddings_array.T)
                 similarities.append(query_similarities)
             similarities = np.array(similarities)
-            
-            logger.debug(f"Using cosine similarity for {len(query_embeddings)} queries x {len(doc_embeddings_array)} documents")
         
         logger.info("Processing search results...")
         
@@ -648,13 +637,10 @@ class ColVinternDocumentRetriever(BaseRetrievalModel):
             all_indices = []
             all_scores = []
             for query_emb in query_embeddings:
-                idx, dist = self.ann_index.knn_query(query_emb, k=top_k)
+                idx, scores = self.ann_index.knn_query(query_emb, k=top_k)
                 all_indices.append(idx)
-                # Convert distance to similarity
-                if self.normalize_embeddings:
-                    all_scores.append(1 - dist)  # Cosine distance to similarity
-                else:
-                    all_scores.append(1 / (1 + dist))  # L2 distance to similarity
+                # For inner product, higher scores are better (no conversion needed)
+                all_scores.append(scores)
             return np.array(all_scores), np.array(all_indices)
     
     def score_multi_vector(self, query_embeddings: torch.Tensor, image_embeddings: torch.Tensor, 
