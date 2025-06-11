@@ -4,14 +4,6 @@
 - **Hỗ trợ đa mô hình**: BM25, Dense Embeddings, Multimodal (văn bản + hình ảnh)
 - **Đa dạng dataset**: Văn bản tiếng Việt, tài liệu có hình ảnh, và OCR
 - **Đánh giá toàn diện**: NDCG, MAP, Recall, Precision, MRR
-- **Tối ưu hiệu suất**: Parallel processing, caching, GPU acceleration
-
-## 📋 Yêu cầu hệ thống
-
-- Python 3.8+
-- CUDA-compatible GPU (tùy chọn, cho dense models)
-- RAM: 8GB+ (khuyến nghị 16GB+ cho large models)
-- Disk space: 10GB+ cho datasets và models
 
 ## 🛠️ Cài đặt
 
