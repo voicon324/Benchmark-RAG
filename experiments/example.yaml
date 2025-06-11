@@ -1,0 +1,172 @@
+description: "vietnamese-rag-dataset Retrieval Benchmark"
+
+models:
+  - name: "optimized_bm25_all_features"
+    type: "optimized_sparse"
+    model_name_or_path: ""
+    parameters:
+      # BM25 parameters
+      k1: 1.6
+      b: 0.75
+      tokenizer: "simple"
+      lowercase: true
+      remove_stopwords: true
+      min_token_length: 2
+      stopwords: ["a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he", "in", "is", "it", "its", "of", "on", "that", "the", "to", "was", "were", "will", "with"]
+      
+      # All optimization features enabled
+      use_parallel_indexing: true
+      num_workers: 32
+      use_sparse_matrix: true
+      use_memory_mapping: true
+      use_caching: true
+      cache_size: 5000000
+      batch_size: 2000
+      use_gpu: true
+      enable_pruning: true
+      pruning_threshold: 0.1
+      use_fast_tokenizer: true
+      early_termination_k: 1000
+    device: "cpu"
+    batch_size: 2000
+  - name: "jina-embeddings-v3"
+    type: "dense" 
+    model_name_or_path: "jinaai/jina-embeddings-v3"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+      max_seq_length: 256
+      trust_remote_code: true
+      # query_encode_params:
+      #   task: "retrieval.query"
+      #   prompt_name: "retrieval.query"
+      # # Document encoding parameters  
+      # document_encode_params:
+      #   task: "retrieval.passage"
+      #   prompt_name: "retrieval.passage"
+    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+    batch_size: 8
+  
+  - name: "paraphrase-multilingual-MiniLM-L12-v2"
+    type: "dense" 
+    model_name_or_path: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+      max_seq_length: 256
+    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+    batch_size: 8
+  
+  - name: "paraphrase-multilingual-mpnet-base-v2"
+    type: "dense" 
+    model_name_or_path: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+      max_seq_length: 256
+    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+    batch_size: 8
+
+  - name: "multilingual-e5-small"
+    type: "dense" 
+    model_name_or_path: "intfloat/multilingual-e5-small"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+      max_seq_length: 256
+    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+    batch_size: 8
+
+  - name: "bge-m3"
+    type: "dense" 
+    model_name_or_path: "BAAI/bge-m3"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+      max_seq_length: 256
+    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+    batch_size: 8
+
+  - name: "dangvantuan/vietnamese-embedding"
+    type: "dense" 
+    model_name_or_path: "dangvantuan/vietnamese-embedding"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+      max_seq_length: 256
+    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+    batch_size: 8
+
+  - name: "vietnamese-bi-encoder"
+    type: "dense" 
+    model_name_or_path: "bkai-foundation-models/vietnamese-bi-encoder"
+    parameters:
+      normalize_embeddings: true
+      model_architecture: "sentence_transformer"
+      use_ann_index: true
+      ann_backend: "faiss"
+      faiss_index_factory_string: "IVF100,Flat"
+      faiss_nprobe: 10
+      faiss_metric_type: "METRIC_INNER_PRODUCT"
+      max_seq_length: 256
+    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+    batch_size: 8
+
+datasets:
+  - name: "vietnamese-rag-dataset"
+    type: "text"
+    data_dir: "/kaggle/input/vietnamese-rag-dataset"
+    # max_samples: 50000  # Limit dataset for faster testing
+    config_overrides:
+      cache_enabled: true
+      validation_enabled: true
+      queries_file: "queries.jsonl"
+      qrels_file: "qrels.txt"
+      corpus_file: "corpus.jsonl"
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision"]
+  k_values: [1, 3, 5, 10, 20, 50]
+  relevance_threshold: 1
+  include_per_query: true
+  top_k: 100
+  save_run_file: true
+  run_file_format: "trec"
+
+output:
+  output_dir: "./results/vietnamese-rag-dataset"
+  experiment_name: "vietnamese-rag-dataset"
+  save_models: false
+  save_intermediate: true
+  log_level: "DEBUG"  # Changed from INFO to DEBUG
+  overwrite: true
