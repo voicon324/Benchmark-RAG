@@ -1,4 +1,4 @@
-description: "vietnamese-rag-dataset Retrieval Benchmark"
+description: "tydiqa_goldp_vietnamese Retrieval Benchmark"
 
 models:
   - name: "optimized_bm25_all_features"
@@ -143,9 +143,9 @@ models:
     batch_size: 8
 
 datasets:
-  - name: "vietnamese-rag-dataset"
+  - name: "tydiqa_goldp_vietnamese"
     type: "text"
-    data_dir: "/kaggle/input/vietnamese-rag-dataset"
+    data_dir: "data/tydiqa_goldp_vietnamese"
     # max_samples: 50000  # Limit dataset for faster testing
     config_overrides:
       cache_enabled: true
@@ -164,8 +164,8 @@ evaluation:
   run_file_format: "trec"
 
 output:
-  output_dir: "./results/vietnamese-rag-dataset"
-  experiment_name: "vietnamese-rag-dataset"
+  output_dir: "./results/tydiqa_goldp_vietnamese"
+  experiment_name: "tydiqa_goldp_vietnamese"
   save_models: false
   save_intermediate: true
   log_level: "DEBUG"  # Changed from INFO to DEBUG
