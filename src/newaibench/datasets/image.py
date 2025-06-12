@@ -150,11 +150,12 @@ class DocumentImageDatasetLoader(BaseDatasetLoader):
             print(f'After loading, corpus has {len(corpus)} documents')
             corpus = self._preprocess_image_corpus(corpus)
             
-            # Apply sampling if specified
-            if self.config.max_samples:
-                corpus_items = list(corpus.items())[:self.config.max_samples]
+            # Apply sampling if specified - use specific corpus limit or fallback to general limit
+            corpus_limit = self.config.max_corpus_samples or self.config.max_samples
+            if corpus_limit:
+                corpus_items = list(corpus.items())[:corpus_limit]
                 corpus = dict(corpus_items)
-                logger.info(f"Limited image corpus to {len(corpus)} samples")
+                logger.info(f"Limited image corpus to {len(corpus)} samples (limit: {corpus_limit})")
             
             # Cache if enabled
             if self.config.cache_enabled:

@@ -29,28 +29,29 @@ models:
       early_termination_k: 1000
     device: "cpu"
     batch_size: 2000
-  - name: "jina-embeddings-v3"
-    type: "dense" 
-    model_name_or_path: "jinaai/jina-embeddings-v3"
-    parameters:
-      normalize_embeddings: true
-      model_architecture: "sentence_transformer"
-      use_ann_index: true
-      ann_backend: "faiss"
-      faiss_index_factory_string: "IVF100,Flat"
-      faiss_nprobe: 10
-      faiss_metric_type: "METRIC_INNER_PRODUCT"
-      max_seq_length: 256
-      trust_remote_code: true
-      # query_encode_params:
-      #   task: "retrieval.query"
-      #   prompt_name: "retrieval.query"
-      # # Document encoding parameters  
-      # document_encode_params:
-      #   task: "retrieval.passage"
-      #   prompt_name: "retrieval.passage"
-    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
-    batch_size: 8
+    
+  # - name: "jina-embeddings-v3"
+  #   type: "dense" 
+  #   model_name_or_path: "jinaai/jina-embeddings-v3"
+  #   parameters:
+  #     normalize_embeddings: true
+  #     model_architecture: "sentence_transformer"
+  #     use_ann_index: true
+  #     ann_backend: "faiss"
+  #     faiss_index_factory_string: "IVF100,Flat"
+  #     faiss_nprobe: 10
+  #     faiss_metric_type: "METRIC_INNER_PRODUCT"
+  #     max_seq_length: 256
+  #     trust_remote_code: true
+  #     # query_encode_params:
+  #     #   task: "retrieval.query"
+  #     #   prompt_name: "retrieval.query"
+  #     # # Document encoding parameters  
+  #     # document_encode_params:
+  #     #   task: "retrieval.passage"
+  #     #   prompt_name: "retrieval.passage"
+  #   device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+  #   batch_size: 8
   
   - name: "paraphrase-multilingual-MiniLM-L12-v2"
     type: "dense" 
@@ -97,20 +98,20 @@ models:
     device: "cuda"  # Changed from "auto" to "cpu" to fix device error
     batch_size: 8
 
-  - name: "bge-m3"
-    type: "dense" 
-    model_name_or_path: "BAAI/bge-m3"
-    parameters:
-      normalize_embeddings: true
-      model_architecture: "sentence_transformer"
-      use_ann_index: true
-      ann_backend: "faiss"
-      faiss_index_factory_string: "IVF100,Flat"
-      faiss_nprobe: 10
-      faiss_metric_type: "METRIC_INNER_PRODUCT"
-      max_seq_length: 256
-    device: "cuda"  # Changed from "auto" to "cpu" to fix device error
-    batch_size: 8
+  # - name: "bge-m3"
+  #   type: "dense" 
+  #   model_name_or_path: "BAAI/bge-m3"
+  #   parameters:
+  #     normalize_embeddings: true
+  #     model_architecture: "sentence_transformer"
+  #     use_ann_index: true
+  #     ann_backend: "faiss"
+  #     faiss_index_factory_string: "IVF100,Flat"
+  #     faiss_nprobe: 10
+  #     faiss_metric_type: "METRIC_INNER_PRODUCT"
+  #     max_seq_length: 256
+  #   device: "cuda"  # Changed from "auto" to "cpu" to fix device error
+  #   batch_size: 8
 
   - name: "dangvantuan/vietnamese-embedding"
     type: "dense" 
@@ -146,7 +147,8 @@ datasets:
   - name: "tydiqa_goldp_vietnamese"
     type: "text"
     data_dir: "data/tydiqa_goldp_vietnamese"
-    # max_samples: 50000  # Limit dataset for faster testing
+    # max_corpus_samples: 50000  # Limit corpus for faster testing
+    max_query_samples: 100   # Limit queries for faster testing
     config_overrides:
       cache_enabled: true
       validation_enabled: true

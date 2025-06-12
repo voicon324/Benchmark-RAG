@@ -228,6 +228,8 @@ class ExperimentRunner:
                 config = DatasetConfig(
                     dataset_path=dataset_config.data_dir,
                     max_samples=dataset_config.max_samples,
+                    max_corpus_samples=dataset_config.max_corpus_samples,
+                    max_query_samples=dataset_config.max_query_samples,
                     **dataset_config.config_overrides
                 )
                 loader = create_dataset_loader('text', config)
@@ -236,6 +238,8 @@ class ExperimentRunner:
                 config = DocumentImageDatasetConfig(
                     dataset_path=dataset_config.data_dir,
                     max_samples=dataset_config.max_samples,
+                    max_corpus_samples=dataset_config.max_corpus_samples,
+                    max_query_samples=dataset_config.max_query_samples,
                     **dataset_config.config_overrides
                 )
                 loader = create_dataset_loader('image', config)
@@ -245,6 +249,8 @@ class ExperimentRunner:
                 config = HuggingFaceDatasetConfig(
                     dataset_path=dataset_config.data_dir,
                     max_samples=dataset_config.max_samples,
+                    max_corpus_samples=dataset_config.max_corpus_samples,
+                    max_query_samples=dataset_config.max_query_samples,
                     **dataset_config.config_overrides
                 )
                 loader = create_dataset_loader('huggingface', config)

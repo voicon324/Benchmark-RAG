@@ -96,11 +96,12 @@ class TextDatasetLoader(BaseDatasetLoader):
             # Apply preprocessing
             corpus = self._preprocess_corpus(corpus)
             
-            # Apply sampling if specified
-            if self.config.max_samples:
-                corpus_items = list(corpus.items())[:self.config.max_samples]
+            # Apply sampling if specified - use specific corpus limit or fallback to general limit
+            corpus_limit = self.config.max_corpus_samples or self.config.max_samples
+            if corpus_limit:
+                corpus_items = list(corpus.items())[:corpus_limit]
                 corpus = dict(corpus_items)
-                logger.info(f"Limited corpus to {len(corpus)} samples")
+                logger.info(f"Limited corpus to {len(corpus)} samples (limit: {corpus_limit})")
             
             # Cache if enabled
             if self.config.cache_enabled:
@@ -147,11 +148,12 @@ class TextDatasetLoader(BaseDatasetLoader):
             # Apply preprocessing to queries
             queries = {qid: self._apply_preprocessing(text) for qid, text in queries.items()}
             
-            # Apply sampling if specified
-            if self.config.max_samples:
-                query_items = list(queries.items())[:self.config.max_samples]
+            # Apply sampling if specified - use specific query limit or fallback to general limit
+            query_limit = self.config.max_query_samples or self.config.max_samples
+            if query_limit:
+                query_items = list(queries.items())[:query_limit]
                 queries = dict(query_items)
-                logger.info(f"Limited queries to {len(queries)} samples")
+                logger.info(f"Limited queries to {len(queries)} samples (limit: {query_limit})")
             
             # Cache if enabled
             if self.config.cache_enabled:

@@ -89,7 +89,9 @@ class DatasetConfiguration:
     data_dir: str
     config_overrides: Dict[str, Any] = field(default_factory=dict)
     split: Optional[str] = None
-    max_samples: Optional[int] = None
+    max_samples: Optional[int] = None          # Legacy support - applies to both corpus and queries
+    max_corpus_samples: Optional[int] = None   # Specific limit for corpus
+    max_query_samples: Optional[int] = None    # Specific limit for queries
     
     def __post_init__(self):
         """Validate configuration after initialization."""
@@ -131,7 +133,7 @@ class DatasetConfiguration:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert DatasetConfiguration to dictionary."""
-        return {
+        result = {
             'name': self.name,
             'type': self.type,
             'data_dir': self.data_dir,
@@ -139,6 +141,14 @@ class DatasetConfiguration:
             'split': self.split,
             'max_samples': self.max_samples
         }
+        
+        # Include new corpus/query specific sampling parameters if they're set
+        if self.max_corpus_samples is not None:
+            result['max_corpus_samples'] = self.max_corpus_samples
+        if self.max_query_samples is not None:
+            result['max_query_samples'] = self.max_query_samples
+            
+        return result
 
 
 @dataclass
@@ -375,7 +385,9 @@ class ExperimentConfig:
                     'data_dir': '/path/to/dataset',
                     'config_overrides': {},
                     'split': None,
-                    'max_samples': None
+                    'max_samples': None,
+                    'max_corpus_samples': None,
+                    'max_query_samples': None
                 }
             ],
             'evaluation': {

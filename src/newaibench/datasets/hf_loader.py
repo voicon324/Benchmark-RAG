@@ -390,7 +390,9 @@ class HuggingFaceDatasetLoader(BaseDatasetLoader):
             
             count = 0
             for item in dataset:
-                if self.config.max_samples and count >= self.config.max_samples:
+                # Apply corpus-specific sampling limit 
+                corpus_limit = self.config.max_corpus_samples or self.config.max_samples
+                if corpus_limit and count >= corpus_limit:
                     break
                 
                 # Extract document ID with nested field support
@@ -498,7 +500,9 @@ class HuggingFaceDatasetLoader(BaseDatasetLoader):
             
             count = 0
             for item in dataset:
-                if self.config.max_samples and count >= self.config.max_samples:
+                # Apply query-specific sampling limit
+                query_limit = self.config.max_query_samples or self.config.max_samples
+                if query_limit and count >= query_limit:
                     break
                 
                 # Extract query ID with nested field support
@@ -563,6 +567,7 @@ class HuggingFaceDatasetLoader(BaseDatasetLoader):
             
             count = 0
             for item in dataset:
+                # Apply general sampling limit for qrels (uses max_samples as qrels typically don't need separate limits)
                 if self.config.max_samples and count >= self.config.max_samples:
                     break
                 

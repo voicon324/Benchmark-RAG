@@ -35,7 +35,9 @@ class DatasetConfig:
         preprocessing_options: Dictionary of preprocessing options
         validation_enabled: Whether to enable data validation
         cache_enabled: Whether to enable caching of loaded data
-        max_samples: Maximum number of samples to load (None for all)
+        max_samples: Maximum number of samples to load (None for all) - legacy parameter
+        max_corpus_samples: Maximum number of corpus documents to load (None for all)
+        max_query_samples: Maximum number of queries to load (None for all)
         metadata: Additional metadata for the dataset
     """
     dataset_path: Union[str, Path]
@@ -47,7 +49,9 @@ class DatasetConfig:
     preprocessing_options: Dict[str, Any] = field(default_factory=dict)
     validation_enabled: bool = True
     cache_enabled: bool = True
-    max_samples: Optional[int] = None
+    max_samples: Optional[int] = None  # Legacy support - applies to both corpus and queries
+    max_corpus_samples: Optional[int] = None  # Specific limit for corpus
+    max_query_samples: Optional[int] = None   # Specific limit for queries
     metadata: Dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self):

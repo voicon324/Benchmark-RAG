@@ -185,3 +185,79 @@ results/
 │   ├── run_files/           # TREC run files
 │   └── logs/               # Experiment logs
 ```
+
+## 📊 Xuất kết quả ra CSV
+
+Framework cung cấp script `convert_results_to_csv.py` để chuyển đổi kết quả từ định dạng JSON sang CSV, giúp dễ dàng phân tích và so sánh hiệu suất các model.
+
+### 🚀 Cách sử dụng
+
+#### 1. Chuyển đổi một file kết quả
+```bash
+# Chuyển đổi file results.json cụ thể
+python convert_results_to_csv.py --input results/tydiqa_goldp_vietnamese/tydiqa_goldp_vietnamese/results.json
+
+# Chỉ định thư mục output tùy chỉnh
+python convert_results_to_csv.py --input results/tydiqa_goldp_vietnamese/tydiqa_goldp_vietnamese/results.json --output my_reports/
+```
+
+#### 2. Chuyển đổi tất cả file kết quả trong thư mục
+```bash
+# Tự động tìm và chuyển đổi tất cả file results.json
+python convert_results_to_csv.py --input results/ --directory
+
+# Hoặc đơn giản hơn (tự động detect directory)
+python convert_results_to_csv.py --input results/
+```
+
+### 📋 Định dạng CSV đầu ra
+
+File CSV được tạo ra có cấu trúc như sau:
+
+| model_name | dataset_name | recall@1 | recall@3 | recall@5 | recall@10 | recall@20 | recall@50 | execution_time | index_time | retrieval_time |
+|------------|--------------|----------|----------|----------|-----------|-----------|-----------|----------------|------------|----------------|
+| optimized_bm25 | tydiqa_goldp_vietnamese | 0.607 | 0.748 | 0.800 | 0.834 | 0.873 | 0.907 | 3.39 | 0.38 | 2.71 |
+| vietnamese-embedding | tydiqa_goldp_vietnamese | 0.416 | 0.575 | 0.611 | 0.673 | 0.716 | 0.764 | 28.15 | 21.96 | 0.50 |
+
+### 📁 Cấu trúc thư mục output
+
+```bash
+report_csv/
+├── tydiqa_goldp_vietnamese_recall_report.csv
+├── legal_data_recall_report.csv
+├── vietdocvqa_recall_report.csv
+└── uit_viquad_recall_report.csv
+```
+
+### 🎯 Tính năng chính
+
+- **Tự động phát hiện**: Tìm tất cả file `results.json` trong cấu trúc thư mục
+- **Tập trung vào Recall**: Chỉ xuất các metrics recall@k (quan trọng nhất cho retrieval)
+- **Thông tin thời gian**: Bao gồm thời gian thực thi, indexing và retrieval
+- **Đặt tên thông minh**: Tự động đặt tên file CSV theo dataset
+- **Sắp xếp cột**: Model name, dataset name, sau đó các recall@k theo thứ tự tăng dần
+
+### 💡 Ví dụ sử dụng
+
+```bash
+# Sau khi chạy thực nghiệm
+python run_experiment.py --config experiments/example.yaml
+
+# Chuyển đổi kết quả sang CSV để phân tích
+python convert_results_to_csv.py --input results/
+
+# Mở file CSV để xem kết quả
+# File sẽ được lưu trong thư mục report_csv/
+```
+
+### 🔧 Tùy chọn nâng cao
+
+```bash
+# Hiển thị help
+python convert_results_to_csv.py --help
+
+# Các tham số chính:
+#   --input, -i    : Đường dẫn đến file results.json hoặc thư mục results
+#   --output, -o   : Thư mục lưu file CSV (mặc định: report_csv)
+#   --directory, -d: Xử lý tất cả file trong thư mục (tự động detect)
+```

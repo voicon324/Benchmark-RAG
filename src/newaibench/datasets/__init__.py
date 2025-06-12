@@ -79,6 +79,8 @@ def create_dataset_loader(dataset_type: str, config: DatasetConfig) -> BaseDatas
                 validation_enabled=config.validation_enabled,
                 cache_enabled=config.cache_enabled,
                 max_samples=config.max_samples,
+                max_corpus_samples=getattr(config, 'max_corpus_samples', None),
+                max_query_samples=getattr(config, 'max_query_samples', None),
                 metadata=config.metadata
             )
         return DocumentImageDatasetLoader(config)
@@ -98,6 +100,8 @@ def create_dataset_loader(dataset_type: str, config: DatasetConfig) -> BaseDatas
                     validation_enabled=config.validation_enabled,
                     cache_enabled=config.cache_enabled,
                     max_samples=config.max_samples,
+                    max_corpus_samples=getattr(config, 'max_corpus_samples', None),
+                    max_query_samples=getattr(config, 'max_query_samples', None),
                     metadata=config.metadata,
                     **{k: v for k, v in config.__dict__.items() if k.startswith('hf_')}
                 )
