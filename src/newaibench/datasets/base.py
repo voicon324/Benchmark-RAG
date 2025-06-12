@@ -305,7 +305,7 @@ class BaseDatasetLoader(ABC):
         
         for query_id, judgments in qrels.items():
             if str(query_id) not in query_ids:
-                logger.warning(f"Qrel query ID not found in queries: {query_id}")
+                logger.warning(f"Qrel query ID not found in queries: {query_id}, {type(query_id)}, {type(query_ids[0])}")
                 pass
             
             for doc_id, score in judgments.items():
