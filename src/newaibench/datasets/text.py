@@ -484,6 +484,8 @@ class TextDatasetLoader(BaseDatasetLoader):
                         # Extended format: query_id iteration doc_id relevance_score
                         elif len(parts) == 4:
                             query_id, _, doc_id, score = parts
+                            if len(doc_id.split(' ')) > 1:
+                                doc_id = doc_id.split(' ')[0]  # Handle multi-word doc IDs
                         else:
                             query_id, doc_id, score = parts[0], parts[-2], parts[-1]
                         
