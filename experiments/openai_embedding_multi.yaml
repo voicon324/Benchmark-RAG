@@ -1,0 +1,73 @@
+# Multi-dataset OpenAI Embedding Retrieval Experiment
+# This configuration shows how to run OpenAI embedding retrieval on multiple datasets
+
+description: "Comparative evaluation using OpenAI embeddings across multiple Vietnamese datasets"
+
+models:
+  - name: "openai_embedding_3_small"
+    type: "openai_embedding"
+    model_name_or_path: ""
+    device: "cpu"
+    batch_size: 64
+    parameters:
+      embeddings_dir: "embeddings"
+      embedding_model: "text-embedding-3-small"
+      normalize_embeddings: true
+      cache_embeddings: true
+      # Note: dataset_name will be set automatically for each dataset
+
+  - name: "openai_embedding_3_large"
+    type: "openai_embedding"
+    model_name_or_path: ""
+    device: "cpu"
+    batch_size: 32  # Smaller batch for larger embeddings
+    parameters:
+      embeddings_dir: "embeddings"
+      embedding_model: "text-embedding-3-large"
+      normalize_embeddings: true
+      cache_embeddings: true
+
+datasets:
+  - name: "tydiqa_goldp_vietnamese"
+    type: "text"
+    data_dir: "data/tydiqa_goldp_vietnamese"
+    config_overrides: {}
+
+  - name: "UIT-ViQuAD2.0"
+    type: "text"
+    data_dir: "data/UIT-ViQuAD2.0"
+    config_overrides: {}
+
+  - name: "legal_data"
+    type: "text"
+    data_dir: "data/legal_data"
+    config_overrides: {}
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 5, 10, 20, 100]
+  relevance_threshold: 1
+  include_per_query: false  # Skip per-query metrics for faster evaluation
+  top_k: 1000
+  save_run_file: true
+  run_file_format: "json"
+
+output:
+  output_dir: "../results"
+  experiment_name: "openai_embedding_multi_dataset"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: true
+
+metadata:
+  experiment_type: "comparative_embedding_evaluation"
+  models_compared: ["text-embedding-3-small", "text-embedding-3-large"]
+  datasets_compared: ["tydiqa_goldp_vietnamese", "UIT-ViQuAD2.0", "legal_data"]
+  notes: |
+    This experiment compares different OpenAI embedding models across multiple Vietnamese datasets.
+    Make sure to generate embeddings for all datasets and models before running:
+    
+    For each dataset:
+    python embedding_tools/embed_dataset.py --dataset_name DATASET_NAME --model text-embedding-3-small
+    python embedding_tools/embed_dataset.py --dataset_name DATASET_NAME --model text-embedding-3-large

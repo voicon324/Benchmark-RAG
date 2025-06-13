@@ -7,6 +7,11 @@ tqdm>=4.64.0
 click>=8.1.0
 pyyaml>=6.0
 
+# OpenAI API and async HTTP
+openai>=1.0.0
+aiohttp>=3.8.0
+aiofiles>=0.8.0
+
 # Machine Learning and Information Retrieval
 torch>=1.12.0
 transformers>=4.45.0

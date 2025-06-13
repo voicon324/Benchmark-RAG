@@ -41,7 +41,7 @@ class ModelConfiguration:
     
     def __post_init__(self):
         """Validate configuration after initialization."""
-        valid_types = ['sparse', 'optimized_sparse', 'dense', 'image_retrieval', 'multimodal']
+        valid_types = ['sparse', 'optimized_sparse', 'dense', 'image_retrieval', 'multimodal', 'openai_embedding']
         if self.type not in valid_types:
             raise ValueError(f"Invalid model type: {self.type}")
         
@@ -51,7 +51,7 @@ class ModelConfiguration:
     
     def validate(self):
         """Validate model configuration."""
-        valid_types = ['sparse', 'optimized_sparse', 'dense', 'image_retrieval', 'multimodal']
+        valid_types = ['sparse', 'optimized_sparse', 'dense', 'image_retrieval', 'multimodal', 'openai_embedding']
         if self.type not in valid_types:
             raise ValueError(f"Invalid model type: {self.type}")
         

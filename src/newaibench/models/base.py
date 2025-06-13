@@ -130,6 +130,7 @@ class ModelType(Enum):
     DENSE = "dense"             # BERT, DPR, ColBERT, sentence transformers
     VISION = "vision"           # CLIP, Vision models, image-based retrieval
     MULTIMODAL = "multimodal"   # Hybrid text+image models
+    OPENAI_EMBEDDING = "openai_embedding"  # Pre-computed OpenAI embeddings
     CUSTOM = "custom"           # Custom implementations
 
 

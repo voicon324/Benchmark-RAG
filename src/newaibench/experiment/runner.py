@@ -19,6 +19,7 @@ from ..datasets import create_dataset_loader, DatasetConfig, DocumentImageDatase
 from ..models import BaseRetrievalModel, BM25Model, DenseTextRetriever, OptimizedBM25Model
 from ..models.image_retrieval import OCRBasedDocumentRetriever, ImageEmbeddingDocumentRetriever
 from ..models.colvintern_retrieval import ColVinternDocumentRetriever
+from ..models.openai_embedding import OpenAIEmbeddingRetriever
 from ..evaluation import Evaluator, EvaluationConfig
 
 from .config import ExperimentConfig, ModelConfiguration, DatasetConfiguration
@@ -200,6 +201,16 @@ class ExperimentRunner:
                     'parameters': model_config.parameters
                 }
                 model = ColVinternDocumentRetriever(config)
+                
+            elif model_config.type == 'openai_embedding':
+                # Create OpenAI embedding retriever
+                config = {
+                    'name': model_config.name,
+                    'device': model_config.device,
+                    'batch_size': model_config.batch_size,
+                    'parameters': model_config.parameters
+                }
+                model = OpenAIEmbeddingRetriever(config)
                 
             else:
                 raise ValueError(f"Unknown model type: {model_config.type}")
@@ -435,6 +446,10 @@ class ExperimentRunner:
             
             # Create model
             model = self._create_model(model_config)
+            
+            # Special handling for OpenAI embedding models - set dataset name
+            if model_config.type == 'openai_embedding' and hasattr(model, 'set_dataset_name'):
+                model.set_dataset_name(dataset_config.name)
             
             # Run retrieval
             results, index_time, retrieval_time = self._run_retrieval(model, corpus, queries, self.config.evaluation.top_k)

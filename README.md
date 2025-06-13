@@ -32,6 +32,21 @@ conda activate Benchmark-RAG
 pip install -r requirements.txt
 ```
 
+## 🔧 Embedding Tools
+
+Framework hỗ trợ tạo embeddings cho datasets sử dụng OpenAI API:
+
+```bash
+# Set OpenAI API key
+export OPENAI_API_KEY="sk-your-api-key-here"
+
+# Embedding dataset
+cd embedding_tools
+python embed_dataset.py --dataset tydiqa_goldp_vietnamese
+```
+
+Chi tiết xem trong `embedding_tools/README.md`
+
 ## 📊 Datasets
 
 ### 📥 Download Datasets

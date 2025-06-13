@@ -38,6 +38,9 @@ from .colvintern_retrieval import ColVinternDocumentRetriever
 # Import ColPali retrieval model
 from .colpali_retrieval import ColPaliDocumentRetriever
 
+# Import OpenAI Embedding retrieval model
+from .openai_embedding import OpenAIEmbeddingRetriever
+
 # Public API
 __all__ = [
     # Base classes
@@ -64,5 +67,8 @@ __all__ = [
     "ColVinternDocumentRetriever",
     
     # ColPali retrieval model  
-    "ColPaliDocumentRetriever"
+    "ColPaliDocumentRetriever",
+    
+    # OpenAI Embedding retrieval model
+    "OpenAIEmbeddingRetriever"
 ]
