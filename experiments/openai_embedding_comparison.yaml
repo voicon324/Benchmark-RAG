@@ -1,0 +1,89 @@
+# OpenAI Embedding Models Comparison
+# This configuration compares all three OpenAI embedding models on tydiqa_goldp_vietnamese dataset
+
+description: "Comprehensive comparison of OpenAI embedding models: text-embedding-3-small, text-embedding-3-large, and text-embedding-ada-002"
+
+models:
+  - name: "openai_embedding_3_small"
+    type: "openai_embedding"
+    model_name_or_path: ""  # Not used for pre-computed embeddings
+    device: "cpu"
+    batch_size: 64
+    parameters:
+      embeddings_dir: "embeddings"
+      embedding_model: "text-embedding-3-small"
+      normalize_embeddings: true
+      cache_embeddings: true
+      # Note: dataset_name will be set automatically
+
+  - name: "openai_embedding_3_large"
+    type: "openai_embedding"
+    model_name_or_path: ""
+    device: "cpu"
+    batch_size: 32  # Smaller batch for larger embeddings
+    parameters:
+      embeddings_dir: "embeddings"
+      embedding_model: "text-embedding-3-large"
+      normalize_embeddings: true
+      cache_embeddings: true
+
+  - name: "openai_embedding_ada_002"
+    type: "openai_embedding"
+    model_name_or_path: ""
+    device: "cpu"
+    batch_size: 64
+    parameters:
+      embeddings_dir: "embeddings"
+      embedding_model: "text-embedding-ada-002"
+      normalize_embeddings: true
+      cache_embeddings: true
+
+datasets:
+  - name: "tydiqa_goldp_vietnamese"
+    type: "text"
+    data_dir: "data/tydiqa_goldp_vietnamese"
+    max_samples: null
+    max_corpus_samples: null
+    max_query_samples: null
+    config_overrides: {}
+
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20, 50, 100]
+  relevance_threshold: 1
+  include_per_query: false  # Skip per-query metrics for faster evaluation
+  top_k: 1000
+  save_run_file: true
+  run_file_format: "trec"
+
+output:
+  output_dir: "results"
+  experiment_name: "openai_embedding_models_comparison"
+  save_models: false
+  save_intermediate: true
+  log_level: "INFO"
+  overwrite: true
+
+metadata:
+  experiment_type: "model_comparison"
+  embedding_models_compared: 
+    - "text-embedding-3-small"
+    - "text-embedding-3-large" 
+    - "text-embedding-ada-002"
+  dataset: "tydiqa_goldp_vietnamese"
+  embedding_dimensions:
+    text-embedding-3-small: 1536
+    text-embedding-3-large: 3072
+    text-embedding-ada-002: 1536
+  notes: |
+    This experiment compares the performance of three OpenAI embedding models:
+    
+    1. text-embedding-3-small (1536 dimensions): Latest small model, cost-effective
+    2. text-embedding-3-large (3072 dimensions): Latest large model, highest performance
+    3. text-embedding-ada-002 (1536 dimensions): Previous generation model
+    
+    All embeddings are pre-computed and normalized for cosine similarity.
+    Dataset: Vietnamese question-answering dataset (TyDi QA)
+    Metrics: nDCG, MAP, Recall, Precision, MRR at various k values
+    
+    Expected performance order: 3-large > 3-small > ada-002

@@ -1,34 +1,34 @@
-description: "tydiqa_goldp_vietnamese Retrieval Benchmark"
+description: "legal_data_small Retrieval Benchmark"
 
 models:
-  - name: "optimized_bm25_all_features"
-    type: "optimized_sparse"
-    model_name_or_path: ""
-    parameters:
-      # BM25 parameters
-      k1: 1.6
-      b: 0.75
-      tokenizer: "simple"
-      lowercase: true
-      remove_stopwords: true
-      min_token_length: 2
-      stopwords: ["a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he", "in", "is", "it", "its", "of", "on", "that", "the", "to", "was", "were", "will", "with"]
+  # - name: "optimized_bm25_all_features"
+  #   type: "optimized_sparse"
+  #   model_name_or_path: ""
+  #   parameters:
+  #     # BM25 parameters
+  #     k1: 1.6
+  #     b: 0.75
+  #     tokenizer: "simple"
+  #     lowercase: true
+  #     remove_stopwords: true
+  #     min_token_length: 2
+  #     stopwords: ["a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he", "in", "is", "it", "its", "of", "on", "that", "the", "to", "was", "were", "will", "with"]
       
-      # All optimization features enabled
-      use_parallel_indexing: true
-      num_workers: 32
-      use_sparse_matrix: true
-      use_memory_mapping: true
-      use_caching: true
-      cache_size: 5000000
-      batch_size: 2000
-      use_gpu: true
-      enable_pruning: true
-      pruning_threshold: 0.1
-      use_fast_tokenizer: true
-      early_termination_k: 1000
-    device: "cpu"
-    batch_size: 2000
+  #     # All optimization features enabled
+  #     use_parallel_indexing: true
+  #     num_workers: 32
+  #     use_sparse_matrix: true
+  #     use_memory_mapping: true
+  #     use_caching: true
+  #     cache_size: 5000000
+  #     batch_size: 2000
+  #     use_gpu: true
+  #     enable_pruning: true
+  #     pruning_threshold: 0.1
+  #     use_fast_tokenizer: true
+  #     early_termination_k: 1000
+  #   device: "cpu"
+  #   batch_size: 2000
     
   # - name: "jina-embeddings-v3"
   #   type: "dense" 
@@ -144,11 +144,11 @@ models:
     batch_size: 8
 
 datasets:
-  - name: "tydiqa_goldp_vietnamese"
+  - name: "legal_data_small"
     type: "text"
-    data_dir: "data/tydiqa_goldp_vietnamese"
+    data_dir: "data/legal_data_small"
     # max_corpus_samples: 50000  # Limit corpus for faster testing
-    max_query_samples: 100   # Limit queries for faster testing
+    # max_query_samples: 100   # Limit queries for faster testing
     config_overrides:
       cache_enabled: true
       validation_enabled: true
@@ -166,8 +166,8 @@ evaluation:
   run_file_format: "trec"
 
 output:
-  output_dir: "./results/tydiqa_goldp_vietnamese"
-  experiment_name: "tydiqa_goldp_vietnamese"
+  output_dir: "./results/legal_data_small"
+  experiment_name: "legal_data_small"
   save_models: false
   save_intermediate: true
   log_level: "DEBUG"  # Changed from INFO to DEBUG

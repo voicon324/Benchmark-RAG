@@ -359,7 +359,7 @@ def main():
     parser.add_argument("--data-dir", default="../data", help="Directory containing datasets")
     parser.add_argument("--output-dir", default="../embeddings", help="Output directory for embeddings")
     parser.add_argument("--model", default="text-embedding-3-small", 
-                       choices=["text-embedding-3-small", "text-embedding-3-large"],
+                       choices=["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"],
                        help="OpenAI embedding model to use")
     parser.add_argument("--dimensions", type=int, help="Embedding dimensions (optional)")
     parser.add_argument("--batch-size", type=int, default=50, help="Batch size for processing")
