@@ -1,141 +1,147 @@
+# NewAIBench - Framework Đánh Giá Hệ Thống Truy Vấn AI
 
-## 🚀 Tính năng chính
+<div align="center">
+  <img src="https://img.shields.io/badge/Python-3.8%2B-blue.svg" alt="Python Version">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
+  <img src="https://img.shields.io/badge/Framework-PyTorch%20%7C%20Transformers-orange.svg" alt="Framework">
+  <img src="https://img.shields.io/badge/Status-Active-brightgreen.svg" alt="Status">
+</div>
 
-- **Hỗ trợ đa mô hình**: BM25, Dense Embeddings, Multimodal (văn bản + hình ảnh)
-- **Đa dạng dataset**: Văn bản tiếng Việt, tài liệu có hình ảnh, và OCR
-- **Đánh giá toàn diện**: NDCG, MAP, Recall, Precision, MRR
+---
 
-## 🛠️ Cài đặt
+## 🎯 Tổng Quan
 
-### 1. Clone repository
+**NewAIBench** là framework đánh giá hiệu suất toàn diện cho các hệ thống truy vấn thông tin (Information Retrieval) với trọng tâm là dữ liệu tiếng Việt. Framework hỗ trợ đa dạng mô hình retrieval và cung cấp các metrics đánh giá chuẩn cho nghiên cứu và phát triển.
 
-```bash
-git clone https://github.com/voicon324/Benchmark-RAG.git
-cd Benchmark-RAG
+### 🚀 Tính Năng Chính
+
+- **🔍 Đa Dạng Mô Hình**: Sparse (BM25), Dense (BERT, Sentence-BERT), Vision (CLIP), Multimodal
+- **📊 Metrics Toàn Diện**: NDCG, MAP, Recall, Precision, MRR với k-values linh hoạt
+- **🗂️ Hỗ Trợ Đa Dataset**: Text, Document Images, OCR, Multimodal
+- **⚡ Tối Ưu Hóa**: Parallel processing, GPU acceleration, caching
+- **🔧 Cấu Hình Linh Hoạt**: YAML configuration, CLI interface
+- **📈 Báo Cáo Phong Phú**: CSV, JSON, visualization charts
+
+---
+
+## 🏗️ Kiến Trúc Hệ Thống
+
+```
+NewAIBench/
+├── src/newaibench/           # Core framework
+│   ├── datasets/             # Dataset loaders  
+│   ├── models/               # Retrieval models
+│   ├── evaluation/           # Metrics & evaluation
+│   ├── experiment/           # Experiment runner
+│   └── reporting/            # Results storage & reports
+├── experiments/              # Configuration files
+├── data/                     # Datasets
+├── embedding_tools/          # OpenAI embedding utilities
+└── results/                  # Experiment results
 ```
 
-### 2. Tạo virtual environment
+---
+
+## 🛠️ Cài Đặt
+
+### 1. Yêu Cầu Hệ Thống
+
+- **Python**: 3.8+ (khuyến nghị 3.12)
+- **GPU**: CUDA-compatible (optional, tăng tốc đáng kể)
+- **Memory**: 8GB+ RAM (tùy thuộc dataset size)
+
+### 2. Cài Đặt Môi Trường
 
 ```bash
-# Sử dụng Python 3.12 (khuyến nghị)
+# Clone repository
+git clone https://github.com/voicon324/NewAIBench.git
+cd NewAIBench
+
+# Tạo virtual environment
 python3.12 -m venv python312_venv
 source python312_venv/bin/activate
 
-# Hoặc sử dụng conda
-conda create -n Benchmark-RAG python=3.12
-conda activate Benchmark-RAG
-```
-
-### 3. Cài đặt dependencies
-
-```bash
+# Cài đặt dependencies
 pip install -r requirements.txt
 ```
 
-## 🔧 Embedding Tools
-
-Framework hỗ trợ tạo embeddings cho datasets sử dụng OpenAI API:
+### 3. Cấu Hình OpenAI API (Optional)
 
 ```bash
-# Set OpenAI API key
+# Để sử dụng OpenAI embeddings
 export OPENAI_API_KEY="sk-your-api-key-here"
-
-# Embedding dataset
-cd embedding_tools
-python embed_dataset.py --dataset tydiqa_goldp_vietnamese
 ```
 
-Chi tiết xem trong `embedding_tools/README.md`
+---
 
-## 📊 Datasets
+## 📦 Datasets
 
-### 📥 Download Datasets
+### 📥 Tải Dataset
 
-Tất cả datasets có thể được tải về từ Google Drive:
-**[Download All Datasets](https://drive.google.com/drive/folders/1IqBPR17x44kLosQTr54kaJ89yzBUSS7e?usp=sharing)**
+**[🔗 Download All Datasets](https://drive.google.com/drive/folders/1IqBPR17x44kLosQTr54kaJ89yzBUSS7e?usp=sharing)**
 
-Sau khi tải về, giải nén các file vào thư mục `data/`:
 ```bash
-# Tạo thư mục data nếu chưa có
+# Tạo thư mục data
 mkdir -p data
 
-# Giải nén các datasets
+# Giải nén datasets
 unzip legal_data.zip -d data/
 unzip NewAIBench_VietDocVQAII_with_OCR.zip -d data/
 unzip tydiqa_goldp_vietnamese.zip -d data/
 unzip UIT-ViQuAD2.0.zip -d data/
 ```
 
-Framework hỗ trợ các datasets sau:
+### 📊 Datasets Hỗ Trợ
 
-### 1. Legal Data (BKAI Law)
-```
-data/legal_data/
-├── corpus.jsonl          # Văn bản pháp luật
-├── queries.jsonl         # Câu hỏi truy vấn
-└── qrels.txt            # Relevance judgments
-```
+| Dataset | Type | Size | Description |
+|---------|------|------|-------------|
+| **Legal Data** | Text | ~50K docs | Văn bản pháp luật Việt Nam |
+| **VietDocVQA** | Multimodal | ~10K docs | Tài liệu có hình ảnh + OCR |
+| **TyDi QA Vietnamese** | Text | ~18K docs | Q&A Wikipedia tiếng Việt |
+| **UIT-ViQuAD 2.0** | Text | ~23K docs | Reading comprehension |
 
-### 2. Vietnamese Document VQA with OCR
-```
-data/NewAIBench_VietDocVQAII_with_OCR/
-├── corpus.jsonl          # Mô tả tài liệu
-├── queries.jsonl         # Câu hỏi
-├── qrels.jsonl          # Relevance judgments
-└── images/              # Hình ảnh tài liệu
-    ├── 10041.png
-    └── ...
-```
+---
 
-### 3. TyDi QA Vietnamese
-```
-data/tydiqa_goldp_vietnamese/
-├── corpus.jsonl
-├── queries.jsonl
-└── qrels.txt
-```
+## 🚀 Sử Dụng Framework
 
-### 4. UIT-ViQuAD 2.0
-```
-data/UIT-ViQuAD2.0/
-├── corpus.jsonl
-├── queries.jsonl
-└── qrels.txt
-```
-
-## 🏃‍♂️ Cách chạy thử nghiệm
-
-## Sử dụng Configuration File (Khuyến nghị)
+### 1. Chạy Experiment Từ Config File
 
 ```bash
-# Chạy với config có sẵn
+# Chạy experiment cơ bản
 python run_experiment.py --config experiments/example.yaml
 
-# Chạy với ColVintern model cho document images
+# Chạy với ColVintern model
 python run_experiment.py --config experiments/colvintern.yaml
-```
-## ⚙️ Configuration
 
-### Cấu trúc file config (YAML)
+# So sánh OpenAI embeddings
+python run_experiment.py --config experiments/openai_embedding_comparison.yaml
+```
+
+### 2. Cấu Hình Experiment (YAML)
 
 ```yaml
-description: "Mô tả thử nghiệm"
+description: "Legal Data Retrieval Benchmark"
 
 models:
-  - name: "model_name"
-    type: "sparse|dense|multimodal"
-    model_name_or_path: "path/to/model"
+  - name: "optimized_bm25"
+    type: "optimized_sparse"
     parameters:
-      # Model-specific parameters
-    device: "cpu|cuda|auto"
-    batch_size: 32
+      k1: 1.6
+      b: 0.75
+      use_parallel_indexing: true
+      use_caching: true
+  
+  - name: "vietnamese_sbert"
+    type: "dense"
+    model_name_or_path: "dangvantuan/vietnamese-embedding"
+    parameters:
+      normalize_embeddings: true
+      use_ann_index: true
 
 datasets:
-  - name: "dataset_name"
-    type: "text|image"
-    data_dir: "path/to/dataset"
-    config_overrides:
-      # Dataset-specific configurations
+  - name: "legal_data_small"
+    type: "text"
+    data_dir: "data/legal_data_small"
 
 evaluation:
   metrics: ["ndcg", "map", "recall", "precision"]
@@ -144,135 +150,141 @@ evaluation:
 
 output:
   output_dir: "./results"
-  experiment_name: "experiment_name"
-  log_level: "INFO"
+  experiment_name: "legal_retrieval_benchmark"
 ```
 
-### Các loại models được hỗ trợ
+### 3. Programmatic Usage
 
-#### 1. Sparse Models (BM25)
+```python
+from newaibench import (
+    ExperimentRunner, 
+    ExperimentConfig,
+    TextDatasetLoader,
+    OptimizedBM25Model
+)
+
+# Load dataset
+config = DatasetConfig(data_dir="data/legal_data_small")
+dataset = TextDatasetLoader(config)
+
+# Initialize model
+model = OptimizedBM25Model({
+    'name': 'bm25_legal',
+    'parameters': {'k1': 1.6, 'b': 0.75}
+})
+
+# Run evaluation
+runner = ExperimentRunner(experiment_config)
+results = runner.run()
+```
+
+---
+
+## 🔧 Tạo Embeddings với OpenAI
+
+```bash
+# Chuyển đến embedding tools
+cd embedding_tools
+
+# Tạo embeddings cho dataset
+python embed_dataset.py --dataset tydiqa_goldp_vietnamese --model text-embedding-3-large
+
+# Sử dụng embeddings trong experiment
+python run_experiment.py --config experiments/openai_embedding.yaml
+```
+
+---
+
+## 🎯 Các Loại Mô Hình Hỗ Trợ
+
+### 1. Sparse Models
+- **BM25**: Chuẩn BM25 với tối ưu hóa
+- **Optimized BM25**: Parallel processing, GPU acceleration
+- **Custom Sparse**: Tùy chỉnh scoring function
+
+### 2. Dense Models
+- **Sentence-BERT**: Multilingual embeddings
+- **Vietnamese BERT**: Specialized cho tiếng Việt
+- **OpenAI Embeddings**: text-embedding-3-large/small
+- **Custom Dense**: Tùy chỉnh encoder architecture
+
+### 3. Vision Models
+- **CLIP**: Multimodal text-image retrieval
+- **OCR-based**: Text extraction + dense retrieval
+- **ColVintern**: Specialized Vietnamese document understanding
+
+### 4. Multimodal Models
+- **OCR + Dense**: Combine text extraction with embeddings
+- **Vision + Text**: Joint multimodal representations
+
+---
+
+## 📊 Metrics Đánh Giá
+
+### Supported Metrics
+
+| Metric | Description | Best Use Case |
+|--------|-------------|---------------|
+| **NDCG@k** | Normalized Discounted Cumulative Gain | Ranked retrieval |
+| **MAP@k** | Mean Average Precision | Overall precision |
+| **Recall@k** | Recall at rank k | Coverage evaluation |
+| **Precision@k** | Precision at rank k | Accuracy evaluation |
+| **MRR** | Mean Reciprocal Rank | First relevant result |
+
+### Customizable Parameters
+
 ```yaml
-- name: "bm25_optimized"
-  type: "sparse"
-  parameters:
-    k1: 1.6
-    b: 0.75
-    use_parallel_indexing: true
-    use_caching: true
+evaluation:
+  metrics: ["ndcg", "map", "recall", "precision", "mrr"]
+  k_values: [1, 3, 5, 10, 20, 50, 100]
+  top_k: 1000
+  relevance_threshold: 1
+  include_per_query: true
 ```
 
-#### 2. Dense Models
-```yaml
-- name: "vietnamese_embedding"
-  type: "dense"
-  model_name_or_path: "dangvantuan/vietnamese-embedding"
-  parameters:
-    normalize_embeddings: true
-    use_ann_index: true
-    faiss_index_factory_string: "IVF100,Flat"
-```
+---
 
-#### 3. Multimodal Models
-```yaml
-- name: "colvintern"
-  type: "multimodal"
-  model_name_or_path: "5CD-AI/ColVintern-1B-v1"
-  parameters:
-    scoring_method: "multi_vector"
-    batch_size_images: 4
-```
+## 📈 Kết Quả và Báo Cáo
 
-## 📈 Kết quả và Đánh giá
+### 1. Cấu Trúc Kết Quả
 
-### Metrics được hỗ trợ:
-- **NDCG@k**: Normalized Discounted Cumulative Gain
-- **MAP@k**: Mean Average Precision
-- **Recall@k**: Recall at rank k
-- **Precision@k**: Precision at rank k
-- **MRR**: Mean Reciprocal Rank
-
-### Cấu trúc kết quả:
 ```
 results/
 ├── experiment_name/
-│   ├── summary.json          # Tổng quan kết quả
-│   ├── detailed_results.json # Chi tiết từng model/dataset
-│   ├── run_files/           # TREC run files
-│   └── logs/               # Experiment logs
+│   ├── summary.json              # Tổng quan metrics
+│   ├── detailed_results.json     # Chi tiết từng model
+│   ├── cost_analysis.json        # Phân tích chi phí
+│   └── runs/                     # Individual run data
 ```
 
-## 📊 Xuất kết quả ra CSV
-
-Framework cung cấp script `convert_results_to_csv.py` để chuyển đổi kết quả từ định dạng JSON sang CSV, giúp dễ dàng phân tích và so sánh hiệu suất các model.
-
-### 🚀 Cách sử dụng
-
-#### 1. Chuyển đổi một file kết quả
-```bash
-# Chuyển đổi file results.json cụ thể
-python convert_results_to_csv.py --input results/tydiqa_goldp_vietnamese/tydiqa_goldp_vietnamese/results.json
-
-# Chỉ định thư mục output tùy chỉnh
-python convert_results_to_csv.py --input results/tydiqa_goldp_vietnamese/tydiqa_goldp_vietnamese/results.json --output my_reports/
-```
-
-#### 2. Chuyển đổi tất cả file kết quả trong thư mục
-```bash
-# Tự động tìm và chuyển đổi tất cả file results.json
-python convert_results_to_csv.py --input results/ --directory
-
-# Hoặc đơn giản hơn (tự động detect directory)
-python convert_results_to_csv.py --input results/
-```
-
-### 📋 Định dạng CSV đầu ra
-
-File CSV được tạo ra có cấu trúc như sau:
-
-| model_name | dataset_name | recall@1 | recall@3 | recall@5 | recall@10 | recall@20 | recall@50 | execution_time | index_time | retrieval_time |
-|------------|--------------|----------|----------|----------|-----------|-----------|-----------|----------------|------------|----------------|
-| optimized_bm25 | tydiqa_goldp_vietnamese | 0.607 | 0.748 | 0.800 | 0.834 | 0.873 | 0.907 | 3.39 | 0.38 | 2.71 |
-| vietnamese-embedding | tydiqa_goldp_vietnamese | 0.416 | 0.575 | 0.611 | 0.673 | 0.716 | 0.764 | 28.15 | 21.96 | 0.50 |
-
-### 📁 Cấu trúc thư mục output
+### 2. Xuất Báo Cáo CSV
 
 ```bash
-report_csv/
-├── tydiqa_goldp_vietnamese_recall_report.csv
-├── legal_data_recall_report.csv
-├── vietdocvqa_recall_report.csv
-└── uit_viquad_recall_report.csv
-```
-
-### 🎯 Tính năng chính
-
-- **Tự động phát hiện**: Tìm tất cả file `results.json` trong cấu trúc thư mục
-- **Tập trung vào Recall**: Chỉ xuất các metrics recall@k (quan trọng nhất cho retrieval)
-- **Thông tin thời gian**: Bao gồm thời gian thực thi, indexing và retrieval
-- **Đặt tên thông minh**: Tự động đặt tên file CSV theo dataset
-- **Sắp xếp cột**: Model name, dataset name, sau đó các recall@k theo thứ tự tăng dần
-
-### 💡 Ví dụ sử dụng
-
-```bash
-# Sau khi chạy thực nghiệm
-python run_experiment.py --config experiments/example.yaml
-
-# Chuyển đổi kết quả sang CSV để phân tích
+# Chuyển đổi kết quả thành CSV
 python convert_results_to_csv.py --input results/
 
-# Mở file CSV để xem kết quả
-# File sẽ được lưu trong thư mục report_csv/
+# Kết quả trong thư mục report_csv/
+ls report_csv/
+# tydiqa_goldp_vietnamese_recall_report.csv
+# legal_data_recall_report.csv
 ```
 
-### 🔧 Tùy chọn nâng cao
+### 3. Ví Dụ Kết Quả
 
-```bash
-# Hiển thị help
-python convert_results_to_csv.py --help
+| Model | Dataset | Recall@1 | Recall@5 | Recall@10 | Execution Time |
+|-------|---------|----------|----------|-----------|----------------|
+| BM25 | Legal Data | 0.607 | 0.800 | 0.834 | 3.39s |
+| Vietnamese BERT | Legal Data | 0.416 | 0.611 | 0.673 | 28.15s |
+| OpenAI Embedding | Legal Data | 0.523 | 0.702 | 0.745 | 45.20s |
 
-# Các tham số chính:
-#   --input, -i    : Đường dẫn đến file results.json hoặc thư mục results
-#   --output, -o   : Thư mục lưu file CSV (mặc định: report_csv)
-#   --directory, -d: Xử lý tất cả file trong thư mục (tự động detect)
-```
+---
+
+## 🙏 Acknowledgments
+
+- **OpenAI**: Embedding APIs
+- **Hugging Face**: Transformers library
+- **Sentence-Transformers**: Dense retrieval models
+- **BEIR**: Benchmark framework inspiration
+- **Vietnamese NLP Community**: Dataset contributions
+
+---
