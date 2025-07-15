@@ -1,4 +1,4 @@
-# NewAIBench - Framework Đánh Giá Hệ Thống Truy Vấn AI
+# Benchmark RAG - Vietnamese
 
 <div align="center">
   <img src="https://img.shields.io/badge/Python-3.8%2B-blue.svg" alt="Python Version">
@@ -11,7 +11,7 @@
 
 ## 🎯 Tổng Quan
 
-**NewAIBench** là framework đánh giá hiệu suất toàn diện cho các hệ thống truy vấn thông tin (Information Retrieval) với trọng tâm là dữ liệu tiếng Việt. Framework hỗ trợ đa dạng mô hình retrieval và cung cấp các metrics đánh giá chuẩn cho nghiên cứu và phát triển.
+**Benchmark-RAG** là framework đánh giá hiệu suất toàn diện cho các hệ thống truy vấn thông tin (Information Retrieval) với trọng tâm là dữ liệu tiếng Việt. Framework hỗ trợ đa dạng mô hình retrieval và cung cấp các metrics đánh giá chuẩn cho nghiên cứu và phát triển.
 
 ### 🚀 Tính Năng Chính
 
@@ -27,7 +27,7 @@
 ## 🏗️ Kiến Trúc Hệ Thống
 
 ```
-NewAIBench/
+Benchmark-RAG/
 ├── src/newaibench/           # Core framework
 │   ├── datasets/             # Dataset loaders  
 │   ├── models/               # Retrieval models
