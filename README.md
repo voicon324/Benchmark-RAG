@@ -268,15 +268,6 @@ ls report_csv/
 # tydiqa_goldp_vietnamese_recall_report.csv
 # legal_data_recall_report.csv
 ```
-
-### 3. Ví Dụ Kết Quả
-
-| Model | Dataset | Recall@1 | Recall@5 | Recall@10 | Execution Time |
-|-------|---------|----------|----------|-----------|----------------|
-| BM25 | Legal Data | 0.607 | 0.800 | 0.834 | 3.39s |
-| Vietnamese BERT | Legal Data | 0.416 | 0.611 | 0.673 | 28.15s |
-| OpenAI Embedding | Legal Data | 0.523 | 0.702 | 0.745 | 45.20s |
-
 ---
 
 ## 🙏 Acknowledgments
